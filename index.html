@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <script src="./main.js"></script>
+  </head>
+  <body>
+    <script>
+      const getPerformance =
+        typeof performance !== "undefined"
+          ? typeof performance.memory !== "undefined"
+            ? function () {
+                return {
+                  now: performance.now(),
+                  usedHeapSize: performance.memory.usedJSHeapSize,
+                  totalHeapSize: performance.memory.totalJSHeapSize,
+                };
+              }
+            : function () {
+                return {
+                  now: performance.now(),
+                  usedHeapSize: 0,
+                  totalHeapSize: 0,
+                };
+              }
+          : function () {
+              return {
+                now: Date.now(),
+                usedHeapSize: 0,
+                totalHeapSize: 0,
+              };
+            };
+
+      const app = Elm.Main.init();
+
+      app.ports.runBenchmark.subscribe(function (benchmark) {
+        const samples = [];
+        for (let index = 0; index < benchmark.updateCount; ++index) {
+          samples.push({
+            index: index,
+            dt: 0,
+            usedHeapSize: 0,
+            totalHeapSize: 0,
+          });
+        }
+
+        app.ports.initBenchmark.send(null);
+
+        setTimeout(function () {
+          runBenchmark(benchmark, samples);
+        }, 100);
+      });
+
+      function runBenchmark(benchmark, samples) {
+        for (let index = 0; index < benchmark.updateCount; ++index) {
+          const start = getPerformance();
+          app.ports.updateBenchmark.send(null);
+          const end = getPerformance();
+
+          samples[index] = {
+            index: index,
+            dt: end.now - start.now,
+            usedHeapSize: end.usedHeapSize,
+            totalHeapSize: end.totalHeapSize,
+          };
+        }
+
+        app.ports.benchmarkEnded.send({
+          benchmark: benchmark,
+          samples: samples,
+        });
+      }
+
+      // function runBenchmark(benchmark, samples) {
+      //   let index = 0;
+
+      //   const update = function () {
+      //     console.log("update", index);
+      //     if (index >= benchmark.updateCount) {
+      //       app.ports.benchmarkEnded.send({
+      //         benchmark: benchmark,
+      //         samples: samples,
+      //       });
+      //       return;
+      //     }
+
+      //     const start = getPerformance();
+      //     app.ports.updateBenchmark.send(null);
+      //     const end = getPerformance();
+
+      //     samples[index] = {
+      //       index: index,
+      //       dt: end.now - start.now,
+      //       usedHeapSize: end.usedHeapSize,
+      //       totalHeapSize: end.totalHeapSize,
+      //     };
+
+      //     ++index;
+      //     setTimeout(update);
+      //     // requestAnimationFrame(update);
+      //   };
+
+      //   update();
+      // }
+    </script>
+  </body>
+</html>
