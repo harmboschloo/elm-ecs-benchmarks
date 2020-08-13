@@ -47,11 +47,21 @@
         app.ports.initBenchmark.send(null);
 
         setTimeout(function () {
-          runBenchmark2(benchmark, samples);
+          switch (benchmark.updateType) {
+            case "LoopUpdate":
+              runBenchmarkLoop(benchmark, samples);
+              break;
+            case "TimerUpdate":
+              runBenchmarkTimer(benchmark, samples);
+              break;
+            case "AnimationFrameUpdate":
+              runBenchmarkTimer(benchmark, samples);
+              break;
+          }
         }, 100);
       });
 
-      function runBenchmark(benchmark, samples) {
+      function runBenchmarkLoop(benchmark, samples) {
         for (let index = 0; index < benchmark.updateCount; ++index) {
           const start = getPerformance();
           app.ports.updateBenchmark.send(null);
@@ -71,11 +81,10 @@
         });
       }
 
-      function runBenchmark2(benchmark, samples) {
+      function runBenchmarkTimer(benchmark, samples) {
         let index = 0;
 
         const update = function () {
-          console.log("update", index);
           if (index >= benchmark.updateCount) {
             app.ports.benchmarkEnded.send({
               benchmark: benchmark,
@@ -96,8 +105,15 @@
           };
 
           ++index;
-          setTimeout(update);
-          // requestAnimationFrame(update);
+
+          switch (benchmark.updateType) {
+            case "TimerUpdate":
+              setTimeout(update);
+              break;
+            case "AnimationFrameUpdate":
+              requestAnimationFrame(update);
+              break;
+          }
         };
 
         update();

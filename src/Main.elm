@@ -100,8 +100,42 @@ ecsFrameworkToString ecsFramework =
 ecsFrameworkFromString : String -> Maybe EcsFramework
 ecsFrameworkFromString value =
     ecsFrameworks
-        |> List.filter (\framwork -> value == ecsFrameworkToString framwork)
+        |> List.filter (\framework -> value == ecsFrameworkToString framework)
         |> List.head
+
+
+type UpdateType
+    = LoopUpdate
+    | TimerUpdate
+    | AnimationFrameUpdate
+
+
+updateTypes : List UpdateType
+updateTypes =
+    [ LoopUpdate
+    , TimerUpdate
+    , AnimationFrameUpdate
+    ]
+
+
+updateTypeFromString : String -> Maybe UpdateType
+updateTypeFromString value =
+    updateTypes
+        |> List.filter (\updateType -> value == updateTypeToString updateType)
+        |> List.head
+
+
+updateTypeToString : UpdateType -> String
+updateTypeToString updateType =
+    case updateType of
+        LoopUpdate ->
+            "LoopUpdate"
+
+        TimerUpdate ->
+            "TimerUpdate"
+
+        AnimationFrameUpdate ->
+            "AnimationFrameUpdate"
 
 
 type alias Model =
@@ -113,6 +147,7 @@ type alias Model =
 type alias UiModel =
     { selectedBenchmark : BenchmarkType
     , selectedFramework : EcsFramework
+    , selectedUpdateType : UpdateType
     , results : List BenchmarkResult
     , hinted : List Sample
     }
@@ -136,6 +171,7 @@ type alias BenchmarkProperties =
     , entityCount : Int
     , type_ : BenchmarkType
     , framework : EcsFramework
+    , updateType : UpdateType
     }
 
 
@@ -170,6 +206,7 @@ init _ =
     ( { ui =
             { selectedBenchmark = Iterate1
             , selectedFramework = HarmBoschlooEcs
+            , selectedUpdateType = LoopUpdate
             , results = []
             , hinted = []
             }
@@ -188,6 +225,7 @@ type Msg
     | BenchmarkEnded Data
     | ChangedBenchmarkType String
     | ChangedEcsFramework String
+    | ChangedUpdateType String
     | PressedRun
     | ToggledResult Int Bool
     | Hinted (List Sample)
@@ -267,6 +305,19 @@ update msg model =
                 _ ->
                     ( model, Cmd.none )
 
+        ChangedUpdateType value ->
+            case benchmark.state of
+                Idle ->
+                    case updateTypeFromString value of
+                        Just updateType ->
+                            ( { model | ui = { ui | selectedUpdateType = updateType } }, Cmd.none )
+
+                        Nothing ->
+                            ( model, Cmd.none )
+
+                _ ->
+                    ( model, Cmd.none )
+
         PressedRun ->
             case benchmark.state of
                 Idle ->
@@ -277,6 +328,7 @@ update msg model =
                             , entityCount = 1000
                             , type_ = ui.selectedBenchmark
                             , framework = ui.selectedFramework
+                            , updateType = ui.selectedUpdateType
                             }
                     in
                     ( { model
@@ -362,12 +414,12 @@ updateEcs _ ecsModel =
 
 
 propertiesToString : BenchmarkProperties -> String
-propertiesToString benchmark =
-    [ String.fromInt benchmark.id
-    , benchmarkTypeToString benchmark.type_
-    , ecsFrameworkToString benchmark.framework
-    , String.fromInt benchmark.entityCount
-    , String.fromInt benchmark.updateCount
+propertiesToString properties =
+    [ String.fromInt properties.id
+    , benchmarkTypeToString properties.type_
+    , ecsFrameworkToString properties.framework
+    , String.fromInt properties.entityCount
+    , String.fromInt properties.updateCount ++ "x" ++ updateTypeToString properties.updateType
     ]
         |> String.join "/"
 
@@ -380,72 +432,60 @@ encodeProperties properties =
         , ( "framework", Encode.string (ecsFrameworkToString properties.framework) )
         , ( "entityCount", Encode.int properties.entityCount )
         , ( "updateCount", Encode.int properties.updateCount )
+        , ( "updateType", Encode.string (updateTypeToString properties.updateType) )
         ]
 
 
 view : Model -> Browser.Document Msg
 view model =
-    let
-        uiDisabled =
-            model.benchmark.state /= Idle
-    in
     { title = "elm-ecs-benchmarks"
     , body =
         [ Html.div [ Html.Attributes.style "font-family" "monospace" ]
-            [ Html.Lazy.lazy2 viewInputs uiDisabled model.ui
-            , Html.Lazy.lazy2 viewResults model.ui.results model.ui.hinted
-            ]
+            (case model.benchmark.state of
+                Idle ->
+                    [ Html.Lazy.lazy viewInputs model.ui
+                    , Html.Lazy.lazy2 viewResults model.ui.results model.ui.hinted
+                    ]
+
+                _ ->
+                    [ Html.text "running..." ]
+            )
         ]
     }
 
 
-viewInputs : Bool -> UiModel -> Html Msg
-viewInputs disabled model =
+viewInputs : UiModel -> Html Msg
+viewInputs model =
     Html.div []
-        [ Html.select
-            [ Html.Events.onInput ChangedBenchmarkType
-            , Html.Attributes.disabled disabled
-            ]
-            (benchmarkTypes
-                |> List.map
-                    (\type_ ->
-                        let
-                            value =
-                                benchmarkTypeToString type_
-                        in
-                        Html.option
-                            [ Html.Attributes.value value
-                            , Html.Attributes.selected (type_ == model.selectedBenchmark)
-                            ]
-                            [ Html.text value ]
-                    )
-            )
+        [ viewSelect ChangedBenchmarkType benchmarkTypeToString model.selectedBenchmark benchmarkTypes
         , Html.text " "
-        , Html.select
-            [ Html.Events.onInput ChangedEcsFramework
-            , Html.Attributes.disabled disabled
-            ]
-            (ecsFrameworks
-                |> List.map
-                    (\framework ->
-                        let
-                            value =
-                                ecsFrameworkToString framework
-                        in
-                        Html.option
-                            [ Html.Attributes.value value
-                            , Html.Attributes.selected (framework == model.selectedFramework)
-                            ]
-                            [ Html.text value ]
-                    )
-            )
+        , viewSelect ChangedEcsFramework ecsFrameworkToString model.selectedFramework ecsFrameworks
         , Html.text " "
-        , Html.button
-            [ Html.Events.onClick PressedRun
-            , Html.Attributes.disabled disabled
-            ]
-            [ Html.text "run" ]
+        , viewSelect ChangedUpdateType updateTypeToString model.selectedUpdateType updateTypes
+        , Html.text " "
+        , Html.button [ Html.Events.onClick PressedRun ] [ Html.text "run" ]
         ]
+
+
+viewSelect : (String -> Msg) -> (a -> String) -> a -> List a -> Html Msg
+viewSelect toMsg toString selected values =
+    Html.select
+        [ Html.Events.onInput toMsg
+        ]
+        (values
+            |> List.map
+                (\value ->
+                    let
+                        stringValue =
+                            toString value
+                    in
+                    Html.option
+                        [ Html.Attributes.value stringValue
+                        , Html.Attributes.selected (value == selected)
+                        ]
+                        [ Html.text stringValue ]
+                )
+        )
 
 
 viewResults : List BenchmarkResult -> List Sample -> Html Msg
