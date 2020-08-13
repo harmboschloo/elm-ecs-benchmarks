@@ -126,6 +126,25 @@ entityCountFromString =
     fromString entityCountToString entityCounts
 
 
+updateCounts : ( Int, List Int )
+updateCounts =
+    ( 500
+    , [ 1000
+      , 2000
+      ]
+    )
+
+
+updateCountToString : Int -> String
+updateCountToString updateCount =
+    String.fromInt updateCount ++ "x"
+
+
+updateCountFromString : String -> Maybe Int
+updateCountFromString =
+    fromString updateCountToString updateCounts
+
+
 type UpdateType
     = LoopUpdate
     | TimerUpdate
@@ -169,6 +188,7 @@ type alias UiModel =
     { selectedBenchmark : BenchmarkType
     , selectedFramework : EcsFramework
     , selectedEntityCount : Int
+    , selectedUpdateCount : Int
     , selectedUpdateType : UpdateType
     , results : List BenchmarkResult
     , hinted : List Sample
@@ -189,10 +209,10 @@ type BenchmarkState
 
 type alias BenchmarkProperties =
     { id : Int
-    , updateCount : Int
-    , entityCount : Int
     , type_ : BenchmarkType
     , framework : EcsFramework
+    , entityCount : Int
+    , updateCount : Int
     , updateType : UpdateType
     }
 
@@ -229,6 +249,7 @@ init _ =
             { selectedBenchmark = Iterate1
             , selectedFramework = HarmBoschlooEcs
             , selectedEntityCount = List.NonEmpty.head entityCounts
+            , selectedUpdateCount = List.NonEmpty.head updateCounts
             , selectedUpdateType = LoopUpdate
             , results = []
             , hinted = []
@@ -249,6 +270,7 @@ type Msg
     | ChangedBenchmarkType String
     | ChangedEcsFramework String
     | ChangedEntityCount String
+    | ChangedUpdateCount String
     | ChangedUpdateType String
     | PressedRun
     | ToggledResult Int Bool
@@ -342,6 +364,19 @@ update msg model =
                 _ ->
                     ( model, Cmd.none )
 
+        ChangedUpdateCount value ->
+            case benchmark.state of
+                Idle ->
+                    case updateCountFromString value of
+                        Just updateCount ->
+                            ( { model | ui = { ui | selectedUpdateCount = updateCount } }, Cmd.none )
+
+                        Nothing ->
+                            ( model, Cmd.none )
+
+                _ ->
+                    ( model, Cmd.none )
+
         ChangedUpdateType value ->
             case benchmark.state of
                 Idle ->
@@ -361,10 +396,10 @@ update msg model =
                     let
                         properties =
                             { id = benchmark.nextId
-                            , updateCount = 1000
-                            , entityCount = ui.selectedEntityCount
                             , type_ = ui.selectedBenchmark
                             , framework = ui.selectedFramework
+                            , entityCount = ui.selectedEntityCount
+                            , updateCount = ui.selectedUpdateCount
                             , updateType = ui.selectedUpdateType
                             }
                     in
@@ -499,6 +534,8 @@ viewInputs model =
         , viewSelect ChangedEcsFramework ecsFrameworkToString model.selectedFramework ecsFrameworks
         , Html.text " "
         , viewSelect ChangedEntityCount entityCountToString model.selectedEntityCount entityCounts
+        , Html.text " "
+        , viewSelect ChangedUpdateCount updateCountToString model.selectedUpdateCount updateCounts
         , Html.text " "
         , viewSelect ChangedUpdateType updateTypeToString model.selectedUpdateType updateTypes
         , Html.text " "
