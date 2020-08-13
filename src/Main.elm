@@ -325,70 +325,20 @@ update msg model =
                 _ ->
                     ( model, Cmd.none )
 
-        ChangedBenchmarkType value ->
-            case benchmark.state of
-                Idle ->
-                    case benchmarkTypeFromString value of
-                        Just benchmarkType ->
-                            ( { model | ui = { ui | selectedBenchmark = benchmarkType } }, Cmd.none )
+        ChangedBenchmarkType string ->
+            updateInput benchmarkTypeFromString (\value m -> { m | selectedBenchmark = value }) string model
 
-                        Nothing ->
-                            ( model, Cmd.none )
+        ChangedEcsFramework string ->
+            updateInput ecsFrameworkFromString (\value m -> { m | selectedFramework = value }) string model
 
-                _ ->
-                    ( model, Cmd.none )
+        ChangedEntityCount string ->
+            updateInput entityCountFromString (\value m -> { m | selectedEntityCount = value }) string model
 
-        ChangedEcsFramework value ->
-            case benchmark.state of
-                Idle ->
-                    case ecsFrameworkFromString value of
-                        Just ecsFramework ->
-                            ( { model | ui = { ui | selectedFramework = ecsFramework } }, Cmd.none )
+        ChangedUpdateCount string ->
+            updateInput updateCountFromString (\value m -> { m | selectedUpdateCount = value }) string model
 
-                        Nothing ->
-                            ( model, Cmd.none )
-
-                _ ->
-                    ( model, Cmd.none )
-
-        ChangedEntityCount value ->
-            case benchmark.state of
-                Idle ->
-                    case entityCountFromString value of
-                        Just entityCount ->
-                            ( { model | ui = { ui | selectedEntityCount = entityCount } }, Cmd.none )
-
-                        Nothing ->
-                            ( model, Cmd.none )
-
-                _ ->
-                    ( model, Cmd.none )
-
-        ChangedUpdateCount value ->
-            case benchmark.state of
-                Idle ->
-                    case updateCountFromString value of
-                        Just updateCount ->
-                            ( { model | ui = { ui | selectedUpdateCount = updateCount } }, Cmd.none )
-
-                        Nothing ->
-                            ( model, Cmd.none )
-
-                _ ->
-                    ( model, Cmd.none )
-
-        ChangedUpdateType value ->
-            case benchmark.state of
-                Idle ->
-                    case updateTypeFromString value of
-                        Just updateType ->
-                            ( { model | ui = { ui | selectedUpdateType = updateType } }, Cmd.none )
-
-                        Nothing ->
-                            ( model, Cmd.none )
-
-                _ ->
-                    ( model, Cmd.none )
+        ChangedUpdateType string ->
+            updateInput updateTypeFromString (\value m -> { m | selectedUpdateType = value }) string model
 
         PressedRun ->
             case benchmark.state of
@@ -446,6 +396,21 @@ update msg model =
 
                 _ ->
                     ( model, Cmd.none )
+
+
+updateInput : (String -> Maybe a) -> (a -> UiModel -> UiModel) -> String -> Model -> ( Model, Cmd Msg )
+updateInput valueFromString updateUi stringValue model =
+    case model.benchmark.state of
+        Idle ->
+            case valueFromString stringValue of
+                Just value ->
+                    ( { model | ui = updateUi value model.ui }, Cmd.none )
+
+                Nothing ->
+                    ( model, Cmd.none )
+
+        _ ->
+            ( model, Cmd.none )
 
 
 subscriptions : Model -> Sub Msg
