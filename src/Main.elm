@@ -22,6 +22,7 @@ import LineChart.Interpolation as Interpolation
 import LineChart.Junk as Junk
 import LineChart.Legends as Legends
 import LineChart.Line as Line
+import List.NonEmpty
 
 
 main : Program () Model Msg
@@ -52,12 +53,13 @@ type BenchmarkType
     | Iterate3
 
 
-benchmarkTypes : List BenchmarkType
+benchmarkTypes : ( BenchmarkType, List BenchmarkType )
 benchmarkTypes =
-    [ Iterate1
-    , Iterate2
-    , Iterate3
-    ]
+    ( Iterate1
+    , [ Iterate2
+      , Iterate3
+      ]
+    )
 
 
 benchmarkTypeToString : BenchmarkType -> String
@@ -74,20 +76,19 @@ benchmarkTypeToString benchmarkType =
 
 
 benchmarkTypeFromString : String -> Maybe BenchmarkType
-benchmarkTypeFromString value =
-    benchmarkTypes
-        |> List.filter (\type_ -> value == benchmarkTypeToString type_)
-        |> List.head
+benchmarkTypeFromString =
+    fromString benchmarkTypeToString benchmarkTypes
 
 
 type EcsFramework
     = HarmBoschlooEcs
 
 
-ecsFrameworks : List EcsFramework
+ecsFrameworks : ( EcsFramework, List EcsFramework )
 ecsFrameworks =
-    [ HarmBoschlooEcs
-    ]
+    ( HarmBoschlooEcs
+    , []
+    )
 
 
 ecsFrameworkToString : EcsFramework -> String
@@ -98,10 +99,31 @@ ecsFrameworkToString ecsFramework =
 
 
 ecsFrameworkFromString : String -> Maybe EcsFramework
-ecsFrameworkFromString value =
-    ecsFrameworks
-        |> List.filter (\framework -> value == ecsFrameworkToString framework)
-        |> List.head
+ecsFrameworkFromString =
+    fromString ecsFrameworkToString ecsFrameworks
+
+
+entityCounts : ( Int, List Int )
+entityCounts =
+    ( 1000
+    , [ 2000
+      , 4000
+      , 8000
+      , 16000
+      , 32000
+      , 64000
+      ]
+    )
+
+
+entityCountToString : Int -> String
+entityCountToString entityCount =
+    String.fromInt entityCount ++ " entities"
+
+
+entityCountFromString : String -> Maybe Int
+entityCountFromString =
+    fromString entityCountToString entityCounts
 
 
 type UpdateType
@@ -110,19 +132,18 @@ type UpdateType
     | AnimationFrameUpdate
 
 
-updateTypes : List UpdateType
+updateTypes : ( UpdateType, List UpdateType )
 updateTypes =
-    [ LoopUpdate
-    , TimerUpdate
-    , AnimationFrameUpdate
-    ]
+    ( LoopUpdate
+    , [ TimerUpdate
+      , AnimationFrameUpdate
+      ]
+    )
 
 
 updateTypeFromString : String -> Maybe UpdateType
-updateTypeFromString value =
-    updateTypes
-        |> List.filter (\updateType -> value == updateTypeToString updateType)
-        |> List.head
+updateTypeFromString =
+    fromString updateTypeToString updateTypes
 
 
 updateTypeToString : UpdateType -> String
@@ -147,6 +168,7 @@ type alias Model =
 type alias UiModel =
     { selectedBenchmark : BenchmarkType
     , selectedFramework : EcsFramework
+    , selectedEntityCount : Int
     , selectedUpdateType : UpdateType
     , results : List BenchmarkResult
     , hinted : List Sample
@@ -206,6 +228,7 @@ init _ =
     ( { ui =
             { selectedBenchmark = Iterate1
             , selectedFramework = HarmBoschlooEcs
+            , selectedEntityCount = List.NonEmpty.head entityCounts
             , selectedUpdateType = LoopUpdate
             , results = []
             , hinted = []
@@ -225,6 +248,7 @@ type Msg
     | BenchmarkEnded Data
     | ChangedBenchmarkType String
     | ChangedEcsFramework String
+    | ChangedEntityCount String
     | ChangedUpdateType String
     | PressedRun
     | ToggledResult Int Bool
@@ -305,6 +329,19 @@ update msg model =
                 _ ->
                     ( model, Cmd.none )
 
+        ChangedEntityCount value ->
+            case benchmark.state of
+                Idle ->
+                    case entityCountFromString value of
+                        Just entityCount ->
+                            ( { model | ui = { ui | selectedEntityCount = entityCount } }, Cmd.none )
+
+                        Nothing ->
+                            ( model, Cmd.none )
+
+                _ ->
+                    ( model, Cmd.none )
+
         ChangedUpdateType value ->
             case benchmark.state of
                 Idle ->
@@ -325,7 +362,7 @@ update msg model =
                         properties =
                             { id = benchmark.nextId
                             , updateCount = 1000
-                            , entityCount = 1000
+                            , entityCount = ui.selectedEntityCount
                             , type_ = ui.selectedBenchmark
                             , framework = ui.selectedFramework
                             , updateType = ui.selectedUpdateType
@@ -461,18 +498,21 @@ viewInputs model =
         , Html.text " "
         , viewSelect ChangedEcsFramework ecsFrameworkToString model.selectedFramework ecsFrameworks
         , Html.text " "
+        , viewSelect ChangedEntityCount entityCountToString model.selectedEntityCount entityCounts
+        , Html.text " "
         , viewSelect ChangedUpdateType updateTypeToString model.selectedUpdateType updateTypes
         , Html.text " "
         , Html.button [ Html.Events.onClick PressedRun ] [ Html.text "run" ]
         ]
 
 
-viewSelect : (String -> Msg) -> (a -> String) -> a -> List a -> Html Msg
+viewSelect : (String -> Msg) -> (a -> String) -> a -> ( a, List a ) -> Html Msg
 viewSelect toMsg toString selected values =
     Html.select
         [ Html.Events.onInput toMsg
         ]
         (values
+            |> List.NonEmpty.toList
             |> List.map
                 (\value ->
                     let
@@ -650,3 +690,11 @@ colors =
     , Colors.grayLight
     , Colors.grayLightest
     ]
+
+
+fromString : (a -> String) -> ( a, List a ) -> String -> Maybe a
+fromString toString values stringValue =
+    values
+        |> List.NonEmpty.toList
+        |> List.filter (\value -> stringValue == toString value)
+        |> List.head
