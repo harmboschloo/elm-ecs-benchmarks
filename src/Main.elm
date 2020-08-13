@@ -7,6 +7,7 @@ import HarmBoschlooEcs as HarmBoschlooEcs
 import Html exposing (Html)
 import Html.Attributes
 import Html.Events
+import Html.Lazy
 import Json.Encode as Encode
 import LineChart
 import LineChart.Area as Area
@@ -104,22 +105,32 @@ ecsFrameworkFromString value =
 
 
 type alias Model =
+    { ui : UiModel
+    , benchmark : BenchmarkModel
+    }
+
+
+type alias UiModel =
     { selectedBenchmark : BenchmarkType
     , selectedFramework : EcsFramework
-    , state : BenchmarkState
-    , nextBenchmarkId : Int
     , results : List BenchmarkResult
     , hinted : List Sample
     }
 
 
+type alias BenchmarkModel =
+    { state : BenchmarkState
+    , nextId : Int
+    }
+
+
 type BenchmarkState
     = Idle
-    | Initializing Benchmark
-    | Running Benchmark EcsModel
+    | Initializing BenchmarkProperties
+    | Running BenchmarkProperties EcsModel
 
 
-type alias Benchmark =
+type alias BenchmarkProperties =
     { id : Int
     , updateCount : Int
     , entityCount : Int
@@ -135,7 +146,7 @@ type EcsModel
 
 
 type alias BenchmarkResult =
-    { benchmark : Benchmark
+    { properties : BenchmarkProperties
     , data : Data
     , enabled : Bool
     }
@@ -156,12 +167,16 @@ type alias Sample =
 
 init : () -> ( Model, Cmd msg )
 init _ =
-    ( { selectedBenchmark = Iterate1
-      , selectedFramework = HarmBoschlooEcs
-      , state = Idle
-      , nextBenchmarkId = 0
-      , results = []
-      , hinted = []
+    ( { ui =
+            { selectedBenchmark = Iterate1
+            , selectedFramework = HarmBoschlooEcs
+            , results = []
+            , hinted = []
+            }
+      , benchmark =
+            { state = Idle
+            , nextId = 0
+            }
       }
     , Cmd.none
     )
@@ -180,35 +195,45 @@ type Msg
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
+    let
+        { ui, benchmark } =
+            model
+    in
     case msg of
         BenchmarkInit _ ->
-            case model.state of
-                Initializing benchmark ->
-                    ( { model | state = Running benchmark (initEcs benchmark) }, Cmd.none )
+            case benchmark.state of
+                Initializing properties ->
+                    ( { model | benchmark = { benchmark | state = Running properties (initEcs properties) } }
+                    , Cmd.none
+                    )
 
                 _ ->
                     ( model, Cmd.none )
 
         BenchmarkUpdate _ ->
-            case model.state of
-                Running benchmark ecsModel ->
-                    ( { model | state = Running benchmark (updateEcs benchmark ecsModel) }, Cmd.none )
+            case model.benchmark.state of
+                Running properties ecsModel ->
+                    ( { model | benchmark = { benchmark | state = Running properties (updateEcs properties ecsModel) } }
+                    , Cmd.none
+                    )
 
                 _ ->
                     ( model, Cmd.none )
 
         BenchmarkEnded data ->
-            case model.state of
-                Running benchmark _ ->
-                    ( { model
-                        | state = Idle
-                        , results =
-                            model.results
-                                ++ [ { benchmark = benchmark
-                                     , data = data
-                                     , enabled = True
-                                     }
-                                   ]
+            case model.benchmark.state of
+                Running properties _ ->
+                    ( { benchmark = { benchmark | state = Idle }
+                      , ui =
+                            { ui
+                                | results =
+                                    model.ui.results
+                                        ++ [ { properties = properties
+                                             , data = data
+                                             , enabled = True
+                                             }
+                                           ]
+                            }
                       }
                     , Cmd.none
                     )
@@ -217,11 +242,11 @@ update msg model =
                     ( model, Cmd.none )
 
         ChangedBenchmarkType value ->
-            case model.state of
+            case benchmark.state of
                 Idle ->
                     case benchmarkTypeFromString value of
                         Just benchmarkType ->
-                            ( { model | selectedBenchmark = benchmarkType }, Cmd.none )
+                            ( { model | ui = { ui | selectedBenchmark = benchmarkType } }, Cmd.none )
 
                         Nothing ->
                             ( model, Cmd.none )
@@ -230,11 +255,11 @@ update msg model =
                     ( model, Cmd.none )
 
         ChangedEcsFramework value ->
-            case model.state of
+            case benchmark.state of
                 Idle ->
                     case ecsFrameworkFromString value of
                         Just ecsFramework ->
-                            ( { model | selectedFramework = ecsFramework }, Cmd.none )
+                            ( { model | ui = { ui | selectedFramework = ecsFramework } }, Cmd.none )
 
                         Nothing ->
                             ( model, Cmd.none )
@@ -243,41 +268,46 @@ update msg model =
                     ( model, Cmd.none )
 
         PressedRun ->
-            case model.state of
+            case benchmark.state of
                 Idle ->
                     let
-                        benchmark =
-                            { id = model.nextBenchmarkId
+                        properties =
+                            { id = benchmark.nextId
                             , updateCount = 1000
                             , entityCount = 1000
-                            , type_ = model.selectedBenchmark
-                            , framework = model.selectedFramework
+                            , type_ = ui.selectedBenchmark
+                            , framework = ui.selectedFramework
                             }
                     in
                     ( { model
-                        | state = Initializing benchmark
-                        , nextBenchmarkId = model.nextBenchmarkId + 1
+                        | benchmark =
+                            { state = Initializing properties
+                            , nextId = benchmark.nextId + 1
+                            }
                       }
-                    , runBenchmark (encodeBenchmark benchmark)
+                    , runBenchmark (encodeProperties properties)
                     )
 
                 _ ->
                     ( model, Cmd.none )
 
         ToggledResult benchmarkId enabled ->
-            case model.state of
+            case benchmark.state of
                 Idle ->
                     ( { model
-                        | results =
-                            List.map
-                                (\result ->
-                                    if result.benchmark.id == benchmarkId then
-                                        { result | enabled = enabled }
+                        | ui =
+                            { ui
+                                | results =
+                                    List.map
+                                        (\result ->
+                                            if result.properties.id == benchmarkId then
+                                                { result | enabled = enabled }
 
-                                    else
-                                        result
-                                )
-                                model.results
+                                            else
+                                                result
+                                        )
+                                        ui.results
+                            }
                       }
                     , Cmd.none
                     )
@@ -286,9 +316,9 @@ update msg model =
                     ( model, Cmd.none )
 
         Hinted hinted ->
-            case model.state of
+            case benchmark.state of
                 Idle ->
-                    ( { model | hinted = hinted }, Cmd.none )
+                    ( { model | ui = { ui | hinted = hinted } }, Cmd.none )
 
                 _ ->
                     ( model, Cmd.none )
@@ -303,22 +333,22 @@ subscriptions _ =
         ]
 
 
-initEcs : Benchmark -> EcsModel
-initEcs benchmark =
-    case benchmark.framework of
+initEcs : BenchmarkProperties -> EcsModel
+initEcs properties =
+    case properties.framework of
         HarmBoschlooEcs ->
-            case benchmark.type_ of
+            case properties.type_ of
                 Iterate1 ->
-                    HarmBoschlooEcsIterate1 (HarmBoschlooEcs.initIterate1 benchmark)
+                    HarmBoschlooEcsIterate1 (HarmBoschlooEcs.initIterate1 properties)
 
                 Iterate2 ->
-                    HarmBoschlooEcsIterate2 (HarmBoschlooEcs.initIterate2 benchmark)
+                    HarmBoschlooEcsIterate2 (HarmBoschlooEcs.initIterate2 properties)
 
                 Iterate3 ->
-                    HarmBoschlooEcsIterate3 (HarmBoschlooEcs.initIterate3 benchmark)
+                    HarmBoschlooEcsIterate3 (HarmBoschlooEcs.initIterate3 properties)
 
 
-updateEcs : Benchmark -> EcsModel -> EcsModel
+updateEcs : BenchmarkProperties -> EcsModel -> EcsModel
 updateEcs _ ecsModel =
     case ecsModel of
         HarmBoschlooEcsIterate1 world ->
@@ -331,8 +361,8 @@ updateEcs _ ecsModel =
             HarmBoschlooEcsIterate3 (HarmBoschlooEcs.updateIterate3 world)
 
 
-benchmarkToString : Benchmark -> String
-benchmarkToString benchmark =
+propertiesToString : BenchmarkProperties -> String
+propertiesToString benchmark =
     [ String.fromInt benchmark.id
     , benchmarkTypeToString benchmark.type_
     , ecsFrameworkToString benchmark.framework
@@ -342,37 +372,39 @@ benchmarkToString benchmark =
         |> String.join "/"
 
 
-encodeBenchmark : Benchmark -> Encode.Value
-encodeBenchmark benchmark =
+encodeProperties : BenchmarkProperties -> Encode.Value
+encodeProperties properties =
     Encode.object
-        [ ( "id", Encode.int benchmark.id )
-        , ( "type", Encode.string (benchmarkTypeToString benchmark.type_) )
-        , ( "framework", Encode.string (ecsFrameworkToString benchmark.framework) )
-        , ( "entityCount", Encode.int benchmark.entityCount )
-        , ( "updateCount", Encode.int benchmark.updateCount )
+        [ ( "id", Encode.int properties.id )
+        , ( "type", Encode.string (benchmarkTypeToString properties.type_) )
+        , ( "framework", Encode.string (ecsFrameworkToString properties.framework) )
+        , ( "entityCount", Encode.int properties.entityCount )
+        , ( "updateCount", Encode.int properties.updateCount )
         ]
 
 
 view : Model -> Browser.Document Msg
 view model =
+    let
+        uiDisabled =
+            model.benchmark.state /= Idle
+    in
     { title = "elm-ecs-benchmarks"
     , body =
-        [ viewInputs model
-        , viewResults model
+        [ Html.div [ Html.Attributes.style "font-family" "monospace" ]
+            [ Html.Lazy.lazy2 viewInputs uiDisabled model.ui
+            , Html.Lazy.lazy2 viewResults model.ui.results model.ui.hinted
+            ]
         ]
     }
 
 
-viewInputs : Model -> Html Msg
-viewInputs model =
-    let
-        disabled =
-            Html.Attributes.disabled (model.state /= Idle)
-    in
+viewInputs : Bool -> UiModel -> Html Msg
+viewInputs disabled model =
     Html.div []
         [ Html.select
             [ Html.Events.onInput ChangedBenchmarkType
-            , disabled
+            , Html.Attributes.disabled disabled
             ]
             (benchmarkTypes
                 |> List.map
@@ -391,7 +423,7 @@ viewInputs model =
         , Html.text " "
         , Html.select
             [ Html.Events.onInput ChangedEcsFramework
-            , disabled
+            , Html.Attributes.disabled disabled
             ]
             (ecsFrameworks
                 |> List.map
@@ -410,32 +442,51 @@ viewInputs model =
         , Html.text " "
         , Html.button
             [ Html.Events.onClick PressedRun
-            , disabled
+            , Html.Attributes.disabled disabled
             ]
             [ Html.text "run" ]
         ]
 
 
-viewResults : Model -> Html Msg
-viewResults model =
+viewResults : List BenchmarkResult -> List Sample -> Html Msg
+viewResults results hinted =
     let
-        results =
-            model.results |> List.filter .enabled
+        enabledResults =
+            results |> List.filter .enabled
     in
-    case results of
-        [] ->
-            Html.div [] [ Html.text "no data" ]
+    Html.div []
+        [ Html.h2 [] [ Html.text "Results" ]
+        , Html.div [] (results |> List.map viewResultItem)
+        , case enabledResults of
+            [] ->
+                Html.h3 [] [ Html.text "no data" ]
 
-        _ ->
-            Html.div []
-                [ Html.h3 [] [ Html.text "update time (milliseconds)" ]
-                , LineChart.viewCustom (dtChartConfig model) (List.map2 toSeries results colors)
-                , Html.p [] [ Html.text "Note: 60 FPS is equivalent to 16.7 milliseconds per frame" ]
-                , Html.h3 [] [ Html.text "used heap size (bytes)" ]
-                , LineChart.viewCustom (usedHeapSizeChartConfig model) (List.map2 toSeries results colors)
-                , Html.h3 [] [ Html.text "total heap size (bytes)" ]
-                , LineChart.viewCustom (totalHeapSizeChartConfig model) (List.map2 toSeries results colors)
-                ]
+            _ ->
+                Html.div []
+                    [ Html.h3 [] [ Html.text "update time (milliseconds)" ]
+                    , LineChart.viewCustom (dtChartConfig hinted) (List.map2 toSeries enabledResults colors)
+                    , Html.p [] [ Html.text "Note: 60 FPS is equivalent to 16.7 milliseconds per frame" ]
+                    , Html.h3 [] [ Html.text "used heap size (bytes)" ]
+                    , LineChart.viewCustom (usedHeapSizeChartConfig hinted) (List.map2 toSeries enabledResults colors)
+                    , Html.h3 [] [ Html.text "total heap size (bytes)" ]
+                    , LineChart.viewCustom (totalHeapSizeChartConfig hinted) (List.map2 toSeries enabledResults colors)
+                    ]
+        ]
+
+
+viewResultItem : BenchmarkResult -> Html Msg
+viewResultItem result =
+    Html.label
+        [ Html.Events.onCheck (ToggledResult result.properties.id)
+        , Html.Attributes.style "display" "block"
+        ]
+        [ Html.input
+            [ Html.Attributes.type_ "checkbox"
+            , Html.Attributes.checked result.enabled
+            ]
+            []
+        , Html.text (propertiesToString result.properties)
+        ]
 
 
 toSeries : BenchmarkResult -> Color -> LineChart.Series Sample
@@ -443,12 +494,12 @@ toSeries result color =
     LineChart.line
         color
         Dots.none
-        (benchmarkToString result.benchmark)
+        (propertiesToString result.properties)
         result.data.samples
 
 
-dtChartConfig : Model -> LineChart.Config Sample Msg
-dtChartConfig model =
+dtChartConfig : List Sample -> LineChart.Config Sample Msg
+dtChartConfig hinted =
     { y = Axis.default 450 "time (ms)" .dt
     , x = Axis.default 1270 "index" (.index >> toFloat)
     , container = containerConfig "line-chart-area-ds"
@@ -456,7 +507,7 @@ dtChartConfig model =
     , intersection = Intersection.default
     , legends = Legends.default
     , events = Events.hoverMany Hinted
-    , junk = Junk.hoverMany model.hinted indexFormat dtFormat
+    , junk = Junk.hoverMany hinted indexFormat dtFormat
     , grid = Grid.dots 1 Colors.gray
     , area = Area.default
     , line = Line.default
@@ -464,8 +515,8 @@ dtChartConfig model =
     }
 
 
-usedHeapSizeChartConfig : Model -> LineChart.Config Sample Msg
-usedHeapSizeChartConfig model =
+usedHeapSizeChartConfig : List Sample -> LineChart.Config Sample Msg
+usedHeapSizeChartConfig hinted =
     { y = Axis.default 450 "size (bytes)" (.usedHeapSize >> toFloat)
     , x = Axis.default 1270 "update index" (.index >> toFloat)
     , container = containerConfig "line-chart-area-used-heap-size"
@@ -473,7 +524,7 @@ usedHeapSizeChartConfig model =
     , intersection = Intersection.default
     , legends = Legends.default
     , events = Events.hoverMany Hinted
-    , junk = Junk.hoverMany model.hinted indexFormat usedHeapSizeFormat
+    , junk = Junk.hoverMany hinted indexFormat usedHeapSizeFormat
     , grid = Grid.dots 1 Colors.gray
     , area = Area.normal 0.05
     , line = Line.default
@@ -481,8 +532,8 @@ usedHeapSizeChartConfig model =
     }
 
 
-totalHeapSizeChartConfig : Model -> LineChart.Config Sample Msg
-totalHeapSizeChartConfig model =
+totalHeapSizeChartConfig : List Sample -> LineChart.Config Sample Msg
+totalHeapSizeChartConfig hinted =
     { y = Axis.default 450 "size (bytes)" (.totalHeapSize >> toFloat)
     , x = Axis.default 1270 "update index" (.index >> toFloat)
     , container = containerConfig "line-chart-area-total-heap-size"
@@ -490,7 +541,7 @@ totalHeapSizeChartConfig model =
     , intersection = Intersection.default
     , legends = Legends.default
     , events = Events.hoverMany Hinted
-    , junk = Junk.hoverMany model.hinted indexFormat totalHeapSizeFormat
+    , junk = Junk.hoverMany hinted indexFormat totalHeapSizeFormat
     , grid = Grid.dots 1 Colors.gray
     , area = Area.normal 0.05
     , line = Line.default

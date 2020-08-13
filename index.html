@@ -47,7 +47,7 @@
         app.ports.initBenchmark.send(null);
 
         setTimeout(function () {
-          runBenchmark(benchmark, samples);
+          runBenchmark2(benchmark, samples);
         }, 100);
       });
 
@@ -71,37 +71,37 @@
         });
       }
 
-      // function runBenchmark(benchmark, samples) {
-      //   let index = 0;
+      function runBenchmark2(benchmark, samples) {
+        let index = 0;
 
-      //   const update = function () {
-      //     console.log("update", index);
-      //     if (index >= benchmark.updateCount) {
-      //       app.ports.benchmarkEnded.send({
-      //         benchmark: benchmark,
-      //         samples: samples,
-      //       });
-      //       return;
-      //     }
+        const update = function () {
+          console.log("update", index);
+          if (index >= benchmark.updateCount) {
+            app.ports.benchmarkEnded.send({
+              benchmark: benchmark,
+              samples: samples,
+            });
+            return;
+          }
 
-      //     const start = getPerformance();
-      //     app.ports.updateBenchmark.send(null);
-      //     const end = getPerformance();
+          const start = getPerformance();
+          app.ports.updateBenchmark.send(null);
+          const end = getPerformance();
 
-      //     samples[index] = {
-      //       index: index,
-      //       dt: end.now - start.now,
-      //       usedHeapSize: end.usedHeapSize,
-      //       totalHeapSize: end.totalHeapSize,
-      //     };
+          samples[index] = {
+            index: index,
+            dt: end.now - start.now,
+            usedHeapSize: end.usedHeapSize,
+            totalHeapSize: end.totalHeapSize,
+          };
 
-      //     ++index;
-      //     setTimeout(update);
-      //     // requestAnimationFrame(update);
-      //   };
+          ++index;
+          setTimeout(update);
+          // requestAnimationFrame(update);
+        };
 
-      //   update();
-      // }
+        update();
+      }
     </script>
   </body>
 </html>
