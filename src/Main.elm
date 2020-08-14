@@ -3,7 +3,7 @@ port module Main exposing (main)
 import Browser
 import Color exposing (Color)
 import Ecs
-import HarmBoschlooEcs as HarmBoschlooEcs
+import ElmEcs as ElmEcs
 import Html exposing (Html)
 import Html.Attributes
 import Html.Events
@@ -96,12 +96,12 @@ benchmarkTypeFromString =
 
 
 type EcsFramework
-    = HarmBoschlooEcs
+    = ElmEcs
 
 
 ecsFrameworks : ( EcsFramework, List EcsFramework )
 ecsFrameworks =
-    ( HarmBoschlooEcs
+    ( ElmEcs
     , []
     )
 
@@ -109,8 +109,8 @@ ecsFrameworks =
 ecsFrameworkToString : EcsFramework -> String
 ecsFrameworkToString ecsFramework =
     case ecsFramework of
-        HarmBoschlooEcs ->
-            "HarmBoschlooEcs"
+        ElmEcs ->
+            "ElmEcs"
 
 
 ecsFrameworkFromString : String -> Maybe EcsFramework
@@ -233,12 +233,12 @@ type alias BenchmarkProperties =
 
 
 type EcsModel
-    = HarmBoschlooEcsIterate1 (Ecs.World Int HarmBoschlooEcs.Components3 ())
-    | HarmBoschlooEcsIterate2 (Ecs.World Int HarmBoschlooEcs.Components3 ())
-    | HarmBoschlooEcsIterate3 (Ecs.World Int HarmBoschlooEcs.Components3 ())
-    | HarmBoschlooEcsUpdate1 (Ecs.World Int HarmBoschlooEcs.Components3 ())
-    | HarmBoschlooEcsUpdate2 (Ecs.World Int HarmBoschlooEcs.Components3 ())
-    | HarmBoschlooEcsUpdate3 (Ecs.World Int HarmBoschlooEcs.Components3 ())
+    = ElmEcsIterate1 (Ecs.World Int ElmEcs.Components3 ())
+    | ElmEcsIterate2 (Ecs.World Int ElmEcs.Components3 ())
+    | ElmEcsIterate3 (Ecs.World Int ElmEcs.Components3 ())
+    | ElmEcsUpdate1 (Ecs.World Int ElmEcs.Components3 ())
+    | ElmEcsUpdate2 (Ecs.World Int ElmEcs.Components3 ())
+    | ElmEcsUpdate3 (Ecs.World Int ElmEcs.Components3 ())
 
 
 type alias BenchmarkResult =
@@ -265,7 +265,7 @@ init : () -> ( Model, Cmd msg )
 init _ =
     ( { ui =
             { selectedBenchmark = Iterate1
-            , selectedFramework = HarmBoschlooEcs
+            , selectedFramework = ElmEcs
             , selectedEntityCount = List.NonEmpty.head entityCounts
             , selectedUpdateCount = List.NonEmpty.head updateCounts
             , selectedUpdateType = LoopUpdate
@@ -443,47 +443,47 @@ subscriptions _ =
 initEcs : BenchmarkProperties -> EcsModel
 initEcs properties =
     case properties.framework of
-        HarmBoschlooEcs ->
+        ElmEcs ->
             case properties.type_ of
                 Iterate1 ->
-                    HarmBoschlooEcsIterate1 (HarmBoschlooEcs.initIterate1 properties)
+                    ElmEcsIterate1 (ElmEcs.initIterate1 properties)
 
                 Iterate2 ->
-                    HarmBoschlooEcsIterate2 (HarmBoschlooEcs.initIterate2 properties)
+                    ElmEcsIterate2 (ElmEcs.initIterate2 properties)
 
                 Iterate3 ->
-                    HarmBoschlooEcsIterate3 (HarmBoschlooEcs.initIterate3 properties)
+                    ElmEcsIterate3 (ElmEcs.initIterate3 properties)
 
                 Update1 ->
-                    HarmBoschlooEcsUpdate1 (HarmBoschlooEcs.initIterate1 properties)
+                    ElmEcsUpdate1 (ElmEcs.initIterate1 properties)
 
                 Update2 ->
-                    HarmBoschlooEcsUpdate2 (HarmBoschlooEcs.initIterate1 properties)
+                    ElmEcsUpdate2 (ElmEcs.initIterate1 properties)
 
                 Update3 ->
-                    HarmBoschlooEcsUpdate3 (HarmBoschlooEcs.initIterate1 properties)
+                    ElmEcsUpdate3 (ElmEcs.initIterate1 properties)
 
 
 updateEcs : BenchmarkProperties -> EcsModel -> EcsModel
 updateEcs _ ecsModel =
     case ecsModel of
-        HarmBoschlooEcsIterate1 world ->
-            HarmBoschlooEcsIterate1 (HarmBoschlooEcs.updateIterate1 world)
+        ElmEcsIterate1 world ->
+            ElmEcsIterate1 (ElmEcs.updateIterate1 world)
 
-        HarmBoschlooEcsIterate2 world ->
-            HarmBoschlooEcsIterate2 (HarmBoschlooEcs.updateIterate2 world)
+        ElmEcsIterate2 world ->
+            ElmEcsIterate2 (ElmEcs.updateIterate2 world)
 
-        HarmBoschlooEcsIterate3 world ->
-            HarmBoschlooEcsIterate3 (HarmBoschlooEcs.updateIterate3 world)
+        ElmEcsIterate3 world ->
+            ElmEcsIterate3 (ElmEcs.updateIterate3 world)
 
-        HarmBoschlooEcsUpdate1 world ->
-            HarmBoschlooEcsUpdate1 (HarmBoschlooEcs.updateUpdate1 world)
+        ElmEcsUpdate1 world ->
+            ElmEcsUpdate1 (ElmEcs.updateUpdate1 world)
 
-        HarmBoschlooEcsUpdate2 world ->
-            HarmBoschlooEcsUpdate2 (HarmBoschlooEcs.updateUpdate2 world)
+        ElmEcsUpdate2 world ->
+            ElmEcsUpdate2 (ElmEcs.updateUpdate2 world)
 
-        HarmBoschlooEcsUpdate3 world ->
-            HarmBoschlooEcsUpdate3 (HarmBoschlooEcs.updateUpdate3 world)
+        ElmEcsUpdate3 world ->
+            ElmEcsUpdate3 (ElmEcs.updateUpdate3 world)
 
 
 propertiesToString : BenchmarkProperties -> String

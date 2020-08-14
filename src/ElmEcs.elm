@@ -1,4 +1,4 @@
-module HarmBoschlooEcs exposing
+module ElmEcs exposing
     ( Components3
     , initIterate1
     , initIterate2
