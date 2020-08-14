@@ -96,6 +96,28 @@ benchmarkTypeFromString =
     fromString benchmarkTypeToString benchmarkTypes
 
 
+benchmarkTypeDescription : BenchmarkType -> String
+benchmarkTypeDescription benchmarkType =
+    case benchmarkType of
+        Iterate1 ->
+            "All entities have 3 components a b c. Iterate over all entities with a."
+
+        Iterate2 ->
+            "All entities have 3 components a b c. Iterate over all entities with a & b."
+
+        Iterate3 ->
+            "All entities have 3 components a b c. Iterate over all entities with a & b & c."
+
+        Update1 ->
+            "All entities have 3 components a b c. Iterate over all entities with a and update a."
+
+        Update2 ->
+            "All entities have 3 components a b c. Iterate over all entities with a & b and update a & b."
+
+        Update3 ->
+            "All entities have 3 components a b c. Iterate over all entities with a & b & c and update a & b & c."
+
+
 type EcsFramework
     = ElmEcs
     | ElmGameLogic
@@ -121,6 +143,20 @@ ecsFrameworkToString ecsFramework =
 ecsFrameworkFromString : String -> Maybe EcsFramework
 ecsFrameworkFromString =
     fromString ecsFrameworkToString ecsFrameworks
+
+
+ecsFrameworkDescription : EcsFramework -> Html msg
+ecsFrameworkDescription ecsFramework =
+    case ecsFramework of
+        ElmEcs ->
+            Html.a
+                [ Html.Attributes.href "https://package.elm-lang.org/packages/harmboschloo/elm-ecs/latest/" ]
+                [ Html.text "harmboschloo/elm-ecs" ]
+
+        ElmGameLogic ->
+            Html.a
+                [ Html.Attributes.href "https://package.elm-lang.org/packages/justgook/elm-game-logic/latest/" ]
+                [ Html.text "justgook/elm-game-logic" ]
 
 
 entityCounts : ( Int, List Int )
@@ -180,11 +216,6 @@ updateTypes =
     )
 
 
-updateTypeFromString : String -> Maybe UpdateType
-updateTypeFromString =
-    fromString updateTypeToString updateTypes
-
-
 updateTypeToString : UpdateType -> String
 updateTypeToString updateType =
     case updateType of
@@ -196,6 +227,36 @@ updateTypeToString updateType =
 
         AnimationFrameUpdate ->
             "AnimationFrameUpdate"
+
+
+updateTypeFromString : String -> Maybe UpdateType
+updateTypeFromString =
+    fromString updateTypeToString updateTypes
+
+
+updateTypeDescription : UpdateType -> Html msg
+updateTypeDescription updateType =
+    case updateType of
+        LoopUpdate ->
+            Html.span []
+                [ Html.text "All updates withing one "
+                , Html.i [] [ Html.text "for" ]
+                , Html.text " loop."
+                ]
+
+        TimerUpdate ->
+            Html.span []
+                [ Html.text "One update per "
+                , Html.i [] [ Html.text "setTimeout" ]
+                , Html.text " callback, as fast as possible."
+                ]
+
+        AnimationFrameUpdate ->
+            Html.span []
+                [ Html.text "One update per "
+                , Html.i [] [ Html.text "requestAnimationFrame" ]
+                , Html.text " callback."
+                ]
 
 
 type alias Model =
@@ -590,6 +651,14 @@ viewInputs model =
         , viewSelect ChangedUpdateType updateTypeToString model.selectedUpdateType updateTypes
         , Html.text " "
         , Html.button [ Html.Events.onClick PressedRun ] [ Html.text "run" ]
+        , Html.dl []
+            [ Html.dt [] [ Html.text (benchmarkTypeToString model.selectedBenchmark) ]
+            , Html.dd [] [ Html.text (benchmarkTypeDescription model.selectedBenchmark) ]
+            , Html.dt [] [ Html.text (ecsFrameworkToString model.selectedFramework) ]
+            , Html.dd [] [ ecsFrameworkDescription model.selectedFramework ]
+            , Html.dt [] [ Html.text (updateTypeToString model.selectedUpdateType) ]
+            , Html.dd [] [ updateTypeDescription model.selectedUpdateType ]
+            ]
         ]
 
 
