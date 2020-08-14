@@ -4,6 +4,7 @@ import Browser
 import Color exposing (Color)
 import Ecs
 import ElmEcs as ElmEcs
+import ElmGameLogic
 import Html exposing (Html)
 import Html.Attributes
 import Html.Events
@@ -97,12 +98,13 @@ benchmarkTypeFromString =
 
 type EcsFramework
     = ElmEcs
+    | ElmGameLogic
 
 
 ecsFrameworks : ( EcsFramework, List EcsFramework )
 ecsFrameworks =
     ( ElmEcs
-    , []
+    , [ ElmGameLogic ]
     )
 
 
@@ -111,6 +113,9 @@ ecsFrameworkToString ecsFramework =
     case ecsFramework of
         ElmEcs ->
             "ElmEcs"
+
+        ElmGameLogic ->
+            "ElmGameLogic"
 
 
 ecsFrameworkFromString : String -> Maybe EcsFramework
@@ -239,6 +244,12 @@ type EcsModel
     | ElmEcsUpdate1 (Ecs.World Int ElmEcs.Components3 ())
     | ElmEcsUpdate2 (Ecs.World Int ElmEcs.Components3 ())
     | ElmEcsUpdate3 (Ecs.World Int ElmEcs.Components3 ())
+    | ElmGameLogicIterate1 ElmGameLogic.World3
+    | ElmGameLogicIterate2 ElmGameLogic.World3
+    | ElmGameLogicIterate3 ElmGameLogic.World3
+    | ElmGameLogicUpdate1 ElmGameLogic.World3
+    | ElmGameLogicUpdate2 ElmGameLogic.World3
+    | ElmGameLogicUpdate3 ElmGameLogic.World3
 
 
 type alias BenchmarkResult =
@@ -463,6 +474,26 @@ initEcs properties =
                 Update3 ->
                     ElmEcsUpdate3 (ElmEcs.initUpdate3 properties)
 
+        ElmGameLogic ->
+            case properties.type_ of
+                Iterate1 ->
+                    ElmGameLogicIterate1 (ElmGameLogic.initIterate1 properties)
+
+                Iterate2 ->
+                    ElmGameLogicIterate2 (ElmGameLogic.initIterate2 properties)
+
+                Iterate3 ->
+                    ElmGameLogicIterate3 (ElmGameLogic.initIterate3 properties)
+
+                Update1 ->
+                    ElmGameLogicUpdate1 (ElmGameLogic.initUpdate1 properties)
+
+                Update2 ->
+                    ElmGameLogicUpdate2 (ElmGameLogic.initUpdate2 properties)
+
+                Update3 ->
+                    ElmGameLogicUpdate3 (ElmGameLogic.initUpdate3 properties)
+
 
 updateEcs : BenchmarkProperties -> EcsModel -> EcsModel
 updateEcs _ ecsModel =
@@ -484,6 +515,24 @@ updateEcs _ ecsModel =
 
         ElmEcsUpdate3 world ->
             ElmEcsUpdate3 (ElmEcs.updateUpdate3 world)
+
+        ElmGameLogicIterate1 world ->
+            ElmGameLogicIterate1 (ElmGameLogic.updateIterate1 world)
+
+        ElmGameLogicIterate2 world ->
+            ElmGameLogicIterate2 (ElmGameLogic.updateIterate2 world)
+
+        ElmGameLogicIterate3 world ->
+            ElmGameLogicIterate3 (ElmGameLogic.updateIterate3 world)
+
+        ElmGameLogicUpdate1 world ->
+            ElmGameLogicUpdate1 (ElmGameLogic.updateUpdate1 world)
+
+        ElmGameLogicUpdate2 world ->
+            ElmGameLogicUpdate2 (ElmGameLogic.updateUpdate2 world)
+
+        ElmGameLogicUpdate3 world ->
+            ElmGameLogicUpdate3 (ElmGameLogic.updateUpdate3 world)
 
 
 propertiesToString : BenchmarkProperties -> String
