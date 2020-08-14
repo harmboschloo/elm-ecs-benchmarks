@@ -51,6 +51,9 @@ type BenchmarkType
     = Iterate1
     | Iterate2
     | Iterate3
+    | Update1
+    | Update2
+    | Update3
 
 
 benchmarkTypes : ( BenchmarkType, List BenchmarkType )
@@ -58,6 +61,9 @@ benchmarkTypes =
     ( Iterate1
     , [ Iterate2
       , Iterate3
+      , Update1
+      , Update2
+      , Update3
       ]
     )
 
@@ -73,6 +79,15 @@ benchmarkTypeToString benchmarkType =
 
         Iterate3 ->
             "Iterate3"
+
+        Update1 ->
+            "Update1"
+
+        Update2 ->
+            "Update2"
+
+        Update3 ->
+            "Update3"
 
 
 benchmarkTypeFromString : String -> Maybe BenchmarkType
@@ -221,6 +236,9 @@ type EcsModel
     = HarmBoschlooEcsIterate1 (Ecs.World Int HarmBoschlooEcs.Components3 ())
     | HarmBoschlooEcsIterate2 (Ecs.World Int HarmBoschlooEcs.Components3 ())
     | HarmBoschlooEcsIterate3 (Ecs.World Int HarmBoschlooEcs.Components3 ())
+    | HarmBoschlooEcsUpdate1 (Ecs.World Int HarmBoschlooEcs.Components3 ())
+    | HarmBoschlooEcsUpdate2 (Ecs.World Int HarmBoschlooEcs.Components3 ())
+    | HarmBoschlooEcsUpdate3 (Ecs.World Int HarmBoschlooEcs.Components3 ())
 
 
 type alias BenchmarkResult =
@@ -436,6 +454,15 @@ initEcs properties =
                 Iterate3 ->
                     HarmBoschlooEcsIterate3 (HarmBoschlooEcs.initIterate3 properties)
 
+                Update1 ->
+                    HarmBoschlooEcsUpdate1 (HarmBoschlooEcs.initIterate1 properties)
+
+                Update2 ->
+                    HarmBoschlooEcsUpdate2 (HarmBoschlooEcs.initIterate1 properties)
+
+                Update3 ->
+                    HarmBoschlooEcsUpdate3 (HarmBoschlooEcs.initIterate1 properties)
+
 
 updateEcs : BenchmarkProperties -> EcsModel -> EcsModel
 updateEcs _ ecsModel =
@@ -448,6 +475,15 @@ updateEcs _ ecsModel =
 
         HarmBoschlooEcsIterate3 world ->
             HarmBoschlooEcsIterate3 (HarmBoschlooEcs.updateIterate3 world)
+
+        HarmBoschlooEcsUpdate1 world ->
+            HarmBoschlooEcsUpdate1 (HarmBoschlooEcs.updateUpdate1 world)
+
+        HarmBoschlooEcsUpdate2 world ->
+            HarmBoschlooEcsUpdate2 (HarmBoschlooEcs.updateUpdate2 world)
+
+        HarmBoschlooEcsUpdate3 world ->
+            HarmBoschlooEcsUpdate3 (HarmBoschlooEcs.updateUpdate3 world)
 
 
 propertiesToString : BenchmarkProperties -> String
