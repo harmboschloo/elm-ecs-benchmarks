@@ -111,7 +111,7 @@ updateUpdate1 world =
 applyUpdate1 : Int -> ComponentA -> Ecs.World Int Components3 () -> Ecs.World Int Components3 ()
 applyUpdate1 _ a world =
     world
-        |> Ecs.insertComponent specs.componentA { a1 = a.a1 + 1, a2 = a.a2 - 1 }
+        |> Ecs.insertComponent specs.componentA { a1 = a.a1 + 1 }
 
 
 
@@ -135,8 +135,8 @@ updateUpdate2 world =
 applyUpdate2 : Int -> ComponentA -> ComponentB -> Ecs.World Int Components3 () -> Ecs.World Int Components3 ()
 applyUpdate2 _ a b world =
     world
-        |> Ecs.insertComponent specs.componentA { a1 = a.a1 + 1, a2 = a.a2 - 1 }
-        |> Ecs.insertComponent specs.componentB { b1 = not b.b1, b2 = String.reverse b.b2 }
+        |> Ecs.insertComponent specs.componentA { a1 = a.a1 + 1 }
+        |> Ecs.insertComponent specs.componentB { b1 = b.b1 + 1, b2 = b.b2 - 1 }
 
 
 
@@ -161,9 +161,9 @@ updateUpdate3 world =
 applyUpdate3 : Int -> ComponentA -> ComponentB -> ComponentC -> Ecs.World Int Components3 () -> Ecs.World Int Components3 ()
 applyUpdate3 _ a b c world =
     world
-        |> Ecs.insertComponent specs.componentA { a1 = a.a1 + 1, a2 = a.a2 - 1 }
-        |> Ecs.insertComponent specs.componentB { b1 = not b.b1, b2 = String.reverse b.b2 }
-        |> Ecs.insertComponent specs.componentC { c1 = Char.toUpper c.c1, c2 = List.reverse c.c2 }
+        |> Ecs.insertComponent specs.componentA { a1 = a.a1 + 1 }
+        |> Ecs.insertComponent specs.componentB { b1 = b.b1 + 1, b2 = b.b2 - 1 }
+        |> Ecs.insertComponent specs.componentC { c1 = c.c1 + 1, c2 = c.c2 - 1, c3 = not c.c3 }
 
 
 
@@ -177,9 +177,9 @@ initWorld3 { entityCount } =
             (\id world ->
                 world
                     |> Ecs.insertEntity id
-                    |> Ecs.insertComponent specs.componentA { a1 = 1, a2 = 2 }
-                    |> Ecs.insertComponent specs.componentB { b1 = True, b2 = "" }
-                    |> Ecs.insertComponent specs.componentC { c1 = 'c', c2 = [] }
+                    |> Ecs.insertComponent specs.componentA { a1 = 1 }
+                    |> Ecs.insertComponent specs.componentB { b1 = 1, b2 = 2 }
+                    |> Ecs.insertComponent specs.componentC { c1 = 1, c2 = 2, c3 = False }
             )
             (Ecs.emptyWorld specs.components ())
 
@@ -194,19 +194,19 @@ type alias Components3 =
 
 type alias ComponentA =
     { a1 : Int
-    , a2 : Float
     }
 
 
 type alias ComponentB =
-    { b1 : Bool
-    , b2 : String
+    { b1 : Int
+    , b2 : Float
     }
 
 
 type alias ComponentC =
-    { c1 : Char
-    , c2 : List Int
+    { c1 : Int
+    , c2 : Float
+    , c3 : Bool
     }
 
 

@@ -455,13 +455,13 @@ initEcs properties =
                     ElmEcsIterate3 (ElmEcs.initIterate3 properties)
 
                 Update1 ->
-                    ElmEcsUpdate1 (ElmEcs.initIterate1 properties)
+                    ElmEcsUpdate1 (ElmEcs.initUpdate1 properties)
 
                 Update2 ->
-                    ElmEcsUpdate2 (ElmEcs.initIterate1 properties)
+                    ElmEcsUpdate2 (ElmEcs.initUpdate2 properties)
 
                 Update3 ->
-                    ElmEcsUpdate3 (ElmEcs.initIterate1 properties)
+                    ElmEcsUpdate3 (ElmEcs.initUpdate3 properties)
 
 
 updateEcs : BenchmarkProperties -> EcsModel -> EcsModel
