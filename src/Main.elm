@@ -754,6 +754,7 @@ viewResults results hinted =
                     , Html.h3 [] [ Html.text "total heap size (bytes)" ]
                     , LineChart.viewCustom (totalHeapSizeChartConfig hinted) (List.map2 toSeries enabledResults colors)
                     ]
+        , Html.p [] [ Html.a [ Html.Attributes.href "https://github.com/harmboschloo/elm-ecs-benchmarks" ] [ Html.text "code" ] ]
         ]
 
 
