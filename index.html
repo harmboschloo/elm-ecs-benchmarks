@@ -2,6 +2,8 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
+    <script src="./ecsy-v0.4.0.js"></script>
+    <script src="./ecsy-benchmarks.js"></script>
     <script src="./main.js"></script>
   </head>
   <body>
@@ -44,27 +46,65 @@
           });
         }
 
-        app.ports.initBenchmark.send(null);
+        const api = getApi(app, benchmark);
+
+        if (!api) {
+          app.ports.benchmarkFailed.send("Benchmark not available");
+          return;
+        }
+
+        api.init();
 
         setTimeout(function () {
           switch (benchmark.updateType) {
             case "LoopUpdate":
-              runBenchmarkLoop(benchmark, samples);
+              runBenchmarkLoop(api, benchmark, samples);
               break;
             case "TimerUpdate":
-              runBenchmarkTimer(benchmark, samples);
+              runBenchmarkTimer(api, benchmark, samples);
               break;
             case "AnimationFrameUpdate":
-              runBenchmarkTimer(benchmark, samples);
+              runBenchmarkTimer(api, benchmark, samples);
               break;
           }
         }, 100);
       });
 
-      function runBenchmarkLoop(benchmark, samples) {
+      function getApi(app, benchmark) {
+        if (benchmark.framework === "JsEcsy") {
+          const init = ECSY_BENCHMARKS["init" + benchmark.type];
+          if (typeof init === "function") {
+            let world;
+            return {
+              init: function () {
+                world = init(benchmark);
+                app.ports.initBenchmark.send(null);
+              },
+              update: function () {
+                ECSY_BENCHMARKS.update(world);
+              },
+            };
+          }
+        }
+
+        if (benchmark.framework.startsWith("Elm")) {
+          return {
+            init: function () {
+              app.ports.initBenchmark.send(null);
+            },
+            update: function () {
+              app.ports.updateBenchmark.send(null);
+            },
+          };
+        }
+
+        return null;
+      }
+
+      function runBenchmarkLoop(api, benchmark, samples) {
         for (let index = 0; index < benchmark.updateCount; ++index) {
           const start = getPerformance();
-          app.ports.updateBenchmark.send(null);
+          api.update();
           const end = getPerformance();
 
           samples[index] = {
@@ -81,7 +121,7 @@
         });
       }
 
-      function runBenchmarkTimer(benchmark, samples) {
+      function runBenchmarkTimer(api, benchmark, samples) {
         let index = 0;
 
         const update = function () {
@@ -94,7 +134,7 @@
           }
 
           const start = getPerformance();
-          app.ports.updateBenchmark.send(null);
+          api.update();
           const end = getPerformance();
 
           samples[index] = {

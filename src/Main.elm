@@ -48,6 +48,9 @@ port updateBenchmark : (() -> msg) -> Sub msg
 port benchmarkEnded : (Data -> msg) -> Sub msg
 
 
+port benchmarkFailed : (String -> msg) -> Sub msg
+
+
 type BenchmarkType
     = Iterate1
     | Iterate2
@@ -121,12 +124,15 @@ benchmarkTypeDescription benchmarkType =
 type EcsFramework
     = ElmEcs
     | ElmGameLogic
+    | JsEcsy
 
 
 ecsFrameworks : ( EcsFramework, List EcsFramework )
 ecsFrameworks =
     ( ElmEcs
-    , [ ElmGameLogic ]
+    , [ ElmGameLogic
+      , JsEcsy
+      ]
     )
 
 
@@ -138,6 +144,9 @@ ecsFrameworkToString ecsFramework =
 
         ElmGameLogic ->
             "ElmGameLogic"
+
+        JsEcsy ->
+            "JsEcsy"
 
 
 ecsFrameworkFromString : String -> Maybe EcsFramework
@@ -157,6 +166,11 @@ ecsFrameworkDescription ecsFramework =
             Html.a
                 [ Html.Attributes.href "https://package.elm-lang.org/packages/justgook/elm-game-logic/latest/" ]
                 [ Html.text "justgook/elm-game-logic" ]
+
+        JsEcsy ->
+            Html.a
+                [ Html.Attributes.href "https://ecsy.io/" ]
+                [ Html.text "https://ecsy.io/" ]
 
 
 entityCounts : ( Int, List Int )
@@ -271,9 +285,14 @@ type alias UiModel =
     , selectedEntityCount : Int
     , selectedUpdateCount : Int
     , selectedUpdateType : UpdateType
+    , error : Maybe Error
     , results : List BenchmarkResult
     , hinted : List Sample
     }
+
+
+type Error
+    = ErrorMessage String
 
 
 type alias BenchmarkModel =
@@ -311,6 +330,7 @@ type EcsModel
     | ElmGameLogicUpdate1 ElmGameLogic.World3
     | ElmGameLogicUpdate2 ElmGameLogic.World3
     | ElmGameLogicUpdate3 ElmGameLogic.World3
+    | ExternalModel
 
 
 type alias BenchmarkResult =
@@ -341,6 +361,7 @@ init _ =
             , selectedEntityCount = List.NonEmpty.head entityCounts
             , selectedUpdateCount = List.NonEmpty.head updateCounts
             , selectedUpdateType = LoopUpdate
+            , error = Nothing
             , results = []
             , hinted = []
             }
@@ -357,6 +378,7 @@ type Msg
     = BenchmarkInit ()
     | BenchmarkUpdate ()
     | BenchmarkEnded Data
+    | BenchmarkFailed String
     | ChangedBenchmarkType String
     | ChangedEcsFramework String
     | ChangedEntityCount String
@@ -415,6 +437,13 @@ update msg model =
                 _ ->
                     ( model, Cmd.none )
 
+        BenchmarkFailed message ->
+            ( { ui = { ui | error = Just (ErrorMessage message) }
+              , benchmark = { benchmark | state = Idle }
+              }
+            , Cmd.none
+            )
+
         ChangedBenchmarkType string ->
             updateInput benchmarkTypeFromString (\value m -> { m | selectedBenchmark = value }) string model
 
@@ -443,8 +472,8 @@ update msg model =
                             , updateType = ui.selectedUpdateType
                             }
                     in
-                    ( { model
-                        | benchmark =
+                    ( { ui = { ui | error = Nothing }
+                      , benchmark =
                             { state = Initializing properties
                             , nextId = benchmark.nextId + 1
                             }
@@ -494,7 +523,11 @@ updateInput valueFromString updateUi stringValue model =
         Idle ->
             case valueFromString stringValue of
                 Just value ->
-                    ( { model | ui = updateUi value model.ui }, Cmd.none )
+                    let
+                        ui =
+                            updateUi value model.ui
+                    in
+                    ( { model | ui = { ui | error = Nothing } }, Cmd.none )
 
                 Nothing ->
                     ( model, Cmd.none )
@@ -509,6 +542,7 @@ subscriptions _ =
         [ initBenchmark BenchmarkInit
         , updateBenchmark BenchmarkUpdate
         , benchmarkEnded BenchmarkEnded
+        , benchmarkFailed BenchmarkFailed
         ]
 
 
@@ -555,6 +589,9 @@ initEcs properties =
                 Update3 ->
                     ElmGameLogicUpdate3 (ElmGameLogic.initUpdate3 properties)
 
+        JsEcsy ->
+            ExternalModel
+
 
 updateEcs : BenchmarkProperties -> EcsModel -> EcsModel
 updateEcs _ ecsModel =
@@ -594,6 +631,9 @@ updateEcs _ ecsModel =
 
         ElmGameLogicUpdate3 world ->
             ElmGameLogicUpdate3 (ElmGameLogic.updateUpdate3 world)
+
+        ExternalModel ->
+            ExternalModel
 
 
 propertiesToString : BenchmarkProperties -> String
@@ -651,6 +691,12 @@ viewInputs model =
         , viewSelect ChangedUpdateType updateTypeToString model.selectedUpdateType updateTypes
         , Html.text " "
         , Html.button [ Html.Events.onClick PressedRun ] [ Html.text "run" ]
+        , case model.error of
+            Just (ErrorMessage message) ->
+                Html.h3 [ Html.Attributes.style "color" "#f00" ] [ Html.text message ]
+
+            Nothing ->
+                Html.text ""
         , Html.dl []
             [ Html.dt [] [ Html.text (benchmarkTypeToString model.selectedBenchmark) ]
             , Html.dd [] [ Html.text (benchmarkTypeDescription model.selectedBenchmark) ]
@@ -704,6 +750,7 @@ viewResults results hinted =
                     , Html.p [] [ Html.text "Note: 60 FPS is equivalent to 16.7 milliseconds per frame" ]
                     , Html.h3 [] [ Html.text "used heap size (bytes)" ]
                     , LineChart.viewCustom (usedHeapSizeChartConfig hinted) (List.map2 toSeries enabledResults colors)
+                    , Html.p [] [ Html.text "Note: Memory profile is only available in Chrome. You need to run Chrome with the `--enable-precise-memory-info` argument." ]
                     , Html.h3 [] [ Html.text "total heap size (bytes)" ]
                     , LineChart.viewCustom (totalHeapSizeChartConfig hinted) (List.map2 toSeries enabledResults colors)
                     ]
