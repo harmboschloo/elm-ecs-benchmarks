@@ -10,172 +10,168 @@
   </head>
   <body>
     <script>
-      const getPerformance =
-        typeof performance !== "undefined"
-          ? typeof performance.memory !== "undefined"
-            ? function () {
-                return {
+      (function () {
+        const getPerformance =
+          typeof performance !== "undefined"
+            ? typeof performance.memory !== "undefined"
+              ? () => ({
                   now: performance.now(),
                   usedHeapSize: performance.memory.usedJSHeapSize,
                   totalHeapSize: performance.memory.totalJSHeapSize,
-                };
-              }
-            : function () {
-                return {
+                })
+              : () => ({
                   now: performance.now(),
                   usedHeapSize: 0,
                   totalHeapSize: 0,
-                };
-              }
-          : function () {
-              return {
+                })
+            : () => ({
                 now: Date.now(),
                 usedHeapSize: 0,
                 totalHeapSize: 0,
-              };
-            };
+              });
 
-      const app = Elm.Main.init();
+        const app = Elm.Main.init();
 
-      app.ports.runBenchmark.subscribe(function (benchmark) {
-        const samples = [];
-        for (let index = 0; index < benchmark.updateCount; ++index) {
-          samples.push({
-            index: index,
-            dt: 0,
-            usedHeapSize: 0,
-            totalHeapSize: 0,
-          });
-        }
-
-        const api = getApi(app, benchmark);
-
-        if (!api) {
-          app.ports.benchmarkFailed.send("Benchmark not available");
-          return;
-        }
-
-        api.init();
-
-        setTimeout(function () {
-          switch (benchmark.updateType) {
-            case "LoopUpdate":
-              runBenchmarkLoop(api, benchmark, samples);
-              break;
-            case "TimerUpdate":
-              runBenchmarkTimer(api, benchmark, samples);
-              break;
-            case "AnimationFrameUpdate":
-              runBenchmarkTimer(api, benchmark, samples);
-              break;
-          }
-        }, 100);
-      });
-
-      function getApi(app, benchmark) {
-        if (benchmark.framework === "JsEcsy") {
-          const init = BENCHMARKS_ECSY["init" + benchmark.type];
-          if (typeof init === "function") {
-            let world;
-            return {
-              init: function () {
-                world = init(benchmark);
-                app.ports.initBenchmark.send(null);
-              },
-              update: function () {
-                BENCHMARKS_ECSY.update(world);
-              },
-            };
-          }
-        }
-
-        if (benchmark.framework === "JsHyperrEcs") {
-          const init = BENCHMARKS_HYPERR_ECS["init" + benchmark.type];
-          if (typeof init === "function") {
-            let world;
-            return {
-              init: function () {
-                world = init(benchmark);
-                app.ports.initBenchmark.send(null);
-              },
-              update: function () {
-                BENCHMARKS_HYPERR_ECS.update(world);
-              },
-            };
-          }
-        }
-
-        if (benchmark.framework.startsWith("Elm")) {
-          return {
-            init: function () {
-              app.ports.initBenchmark.send(null);
-            },
-            update: function () {
-              app.ports.updateBenchmark.send(null);
-            },
-          };
-        }
-
-        return null;
-      }
-
-      function runBenchmarkLoop(api, benchmark, samples) {
-        for (let index = 0; index < benchmark.updateCount; ++index) {
-          const start = getPerformance();
-          api.update();
-          const end = getPerformance();
-
-          samples[index] = {
-            index: index,
-            dt: end.now - start.now,
-            usedHeapSize: end.usedHeapSize,
-            totalHeapSize: end.totalHeapSize,
-          };
-        }
-
-        app.ports.benchmarkEnded.send({
-          benchmark: benchmark,
-          samples: samples,
-        });
-      }
-
-      function runBenchmarkTimer(api, benchmark, samples) {
-        let index = 0;
-
-        const update = function () {
-          if (index >= benchmark.updateCount) {
-            app.ports.benchmarkEnded.send({
-              benchmark: benchmark,
-              samples: samples,
+        app.ports.runBenchmark.subscribe((benchmark) => {
+          const samples = [];
+          for (let index = 0; index < benchmark.updateCount; ++index) {
+            samples.push({
+              index: index,
+              dt: 0,
+              usedHeapSize: 0,
+              totalHeapSize: 0,
             });
+          }
+
+          const api = getApi(app, benchmark);
+
+          if (!api) {
+            app.ports.benchmarkFailed.send("Benchmark not available");
             return;
           }
 
-          const start = getPerformance();
-          api.update();
-          const end = getPerformance();
+          api.init();
 
-          samples[index] = {
-            index: index,
-            dt: end.now - start.now,
-            usedHeapSize: end.usedHeapSize,
-            totalHeapSize: end.totalHeapSize,
+          setTimeout(() => {
+            switch (benchmark.updateType) {
+              case "LoopUpdate":
+                runBenchmarkLoop(api, benchmark, samples);
+                break;
+              case "TimerUpdate":
+                runBenchmarkTimer(api, benchmark, samples);
+                break;
+              case "AnimationFrameUpdate":
+                runBenchmarkTimer(api, benchmark, samples);
+                break;
+            }
+          }, 100);
+        });
+
+        function getApi(app, benchmark) {
+          if (benchmark.framework === "JsEcsy") {
+            const init = BENCHMARKS_ECSY["init" + benchmark.type];
+            if (typeof init === "function") {
+              let world;
+              return {
+                init: () => {
+                  world = init(benchmark);
+                  app.ports.initBenchmark.send(null);
+                },
+                update: () => {
+                  BENCHMARKS_ECSY.update(world);
+                },
+              };
+            }
+          }
+
+          if (benchmark.framework === "JsHyperrEcs") {
+            const init = BENCHMARKS_HYPERR_ECS["init" + benchmark.type];
+            if (typeof init === "function") {
+              let world;
+              return {
+                init: () => {
+                  world = init(benchmark);
+                  app.ports.initBenchmark.send(null);
+                },
+                update: () => {
+                  BENCHMARKS_HYPERR_ECS.update(world);
+                },
+              };
+            }
+          }
+
+          if (benchmark.framework.startsWith("Elm")) {
+            return {
+              init: () => {
+                app.ports.initBenchmark.send(null);
+              },
+              update: () => {
+                app.ports.updateBenchmark.send(null);
+              },
+            };
+          }
+
+          return null;
+        }
+
+        function runBenchmarkLoop(api, benchmark, samples) {
+          for (let index = 0; index < benchmark.updateCount; ++index) {
+            const start = getPerformance();
+            api.update();
+            const end = getPerformance();
+
+            samples[index] = {
+              index: index,
+              dt: end.now - start.now,
+              usedHeapSize: end.usedHeapSize,
+              totalHeapSize: end.totalHeapSize,
+            };
+          }
+
+          app.ports.benchmarkEnded.send({
+            benchmark: benchmark,
+            samples: samples,
+          });
+        }
+
+        function runBenchmarkTimer(api, benchmark, samples) {
+          let index = 0;
+
+          const update = () => {
+            if (index >= benchmark.updateCount) {
+              app.ports.benchmarkEnded.send({
+                benchmark: benchmark,
+                samples: samples,
+              });
+              return;
+            }
+
+            const start = getPerformance();
+            api.update();
+            const end = getPerformance();
+
+            samples[index] = {
+              index: index,
+              dt: end.now - start.now,
+              usedHeapSize: end.usedHeapSize,
+              totalHeapSize: end.totalHeapSize,
+            };
+
+            ++index;
+
+            switch (benchmark.updateType) {
+              case "TimerUpdate":
+                setTimeout(update);
+                break;
+              case "AnimationFrameUpdate":
+                requestAnimationFrame(update);
+                break;
+            }
           };
 
-          ++index;
-
-          switch (benchmark.updateType) {
-            case "TimerUpdate":
-              setTimeout(update);
-              break;
-            case "AnimationFrameUpdate":
-              requestAnimationFrame(update);
-              break;
-          }
-        };
-
-        update();
-      }
+          update();
+        }
+      })();
     </script>
   </body>
 </html>
