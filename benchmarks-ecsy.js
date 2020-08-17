@@ -1,5 +1,5 @@
 (function (root, factory) {
-  root.ECSY_BENCHMARKS = factory();
+  root.BENCHMARKS_ECSY = factory();
 })(this, function () {
   const api = {};
 

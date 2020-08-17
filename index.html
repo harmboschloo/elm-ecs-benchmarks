@@ -2,8 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <script src="./ecsy-v0.4.0.js"></script>
-    <script src="./ecsy-benchmarks.js"></script>
+    <script src="./external/ecsy-v0.4.0.js"></script>
+    <script src="./external/hyperr-ecs-v0.5.4.js"></script>
+    <script src="./benchmarks-ecsy.js"></script>
+    <script src="./benchmarks-hyperr-ecs.js"></script>
     <script src="./main.js"></script>
   </head>
   <body>
@@ -72,7 +74,7 @@
 
       function getApi(app, benchmark) {
         if (benchmark.framework === "JsEcsy") {
-          const init = ECSY_BENCHMARKS["init" + benchmark.type];
+          const init = BENCHMARKS_ECSY["init" + benchmark.type];
           if (typeof init === "function") {
             let world;
             return {
@@ -81,7 +83,23 @@
                 app.ports.initBenchmark.send(null);
               },
               update: function () {
-                ECSY_BENCHMARKS.update(world);
+                BENCHMARKS_ECSY.update(world);
+              },
+            };
+          }
+        }
+
+        if (benchmark.framework === "JsHyperrEcs") {
+          const init = BENCHMARKS_HYPERR_ECS["init" + benchmark.type];
+          if (typeof init === "function") {
+            let world;
+            return {
+              init: function () {
+                world = init(benchmark);
+                app.ports.initBenchmark.send(null);
+              },
+              update: function () {
+                BENCHMARKS_HYPERR_ECS.update(world);
               },
             };
           }

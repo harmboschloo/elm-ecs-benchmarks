@@ -125,6 +125,7 @@ type EcsFramework
     = ElmEcs
     | ElmGameLogic
     | JsEcsy
+    | JsHyperrEcs
 
 
 ecsFrameworks : ( EcsFramework, List EcsFramework )
@@ -132,6 +133,7 @@ ecsFrameworks =
     ( ElmEcs
     , [ ElmGameLogic
       , JsEcsy
+      , JsHyperrEcs
       ]
     )
 
@@ -147,6 +149,9 @@ ecsFrameworkToString ecsFramework =
 
         JsEcsy ->
             "JsEcsy"
+
+        JsHyperrEcs ->
+            "JsHyperrEcs"
 
 
 ecsFrameworkFromString : String -> Maybe EcsFramework
@@ -171,6 +176,11 @@ ecsFrameworkDescription ecsFramework =
             Html.a
                 [ Html.Attributes.href "https://ecsy.io/" ]
                 [ Html.text "https://ecsy.io/" ]
+
+        JsHyperrEcs ->
+            Html.a
+                [ Html.Attributes.href "https://github.com/gohyperr/hyperr-ecs" ]
+                [ Html.text "https://github.com/gohyperr/hyperr-ecs" ]
 
 
 entityCounts : ( Int, List Int )
@@ -590,6 +600,9 @@ initEcs properties =
                     ElmGameLogicUpdate3 (ElmGameLogic.initUpdate3 properties)
 
         JsEcsy ->
+            ExternalModel
+
+        JsHyperrEcs ->
             ExternalModel
 
 
