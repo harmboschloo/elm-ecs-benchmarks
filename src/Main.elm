@@ -4,6 +4,8 @@ import Browser
 import Color exposing (Color)
 import Ecs
 import ElmEcs as ElmEcs
+import ElmEcsXArrayBaseline
+import ElmEcsXDictBaseline
 import ElmGameLogic
 import Html exposing (Html)
 import Html.Attributes
@@ -126,6 +128,8 @@ type EcsFramework
     | ElmGameLogic
     | JsEcsy
     | JsHyperrEcs
+    | ElmEcsXArrayBaseline
+    | ElmEcsXDictBaseline
 
 
 ecsFrameworks : ( EcsFramework, List EcsFramework )
@@ -134,6 +138,8 @@ ecsFrameworks =
     , [ ElmGameLogic
       , JsEcsy
       , JsHyperrEcs
+      , ElmEcsXArrayBaseline
+      , ElmEcsXDictBaseline
       ]
     )
 
@@ -152,6 +158,12 @@ ecsFrameworkToString ecsFramework =
 
         JsHyperrEcs ->
             "JsHyperrEcs"
+
+        ElmEcsXArrayBaseline ->
+            "ElmEcsXArrayBaseline"
+
+        ElmEcsXDictBaseline ->
+            "ElmEcsXDictBaseline"
 
 
 ecsFrameworkFromString : String -> Maybe EcsFramework
@@ -181,6 +193,12 @@ ecsFrameworkDescription ecsFramework =
             Html.a
                 [ Html.Attributes.href "https://github.com/gohyperr/hyperr-ecs" ]
                 [ Html.text "https://github.com/gohyperr/hyperr-ecs" ]
+
+        ElmEcsXArrayBaseline ->
+            Html.text "Array of entity records"
+
+        ElmEcsXDictBaseline ->
+            Html.text "Dict of entity records"
 
 
 entityCounts : ( Int, List Int )
@@ -340,6 +358,18 @@ type EcsModel
     | ElmGameLogicUpdate1 ElmGameLogic.World3
     | ElmGameLogicUpdate2 ElmGameLogic.World3
     | ElmGameLogicUpdate3 ElmGameLogic.World3
+    | ElmEcsXArrayBaselineIterate1 ElmEcsXArrayBaseline.World3
+    | ElmEcsXArrayBaselineIterate2 ElmEcsXArrayBaseline.World3
+    | ElmEcsXArrayBaselineIterate3 ElmEcsXArrayBaseline.World3
+    | ElmEcsXArrayBaselineUpdate1 ElmEcsXArrayBaseline.World3
+    | ElmEcsXArrayBaselineUpdate2 ElmEcsXArrayBaseline.World3
+    | ElmEcsXArrayBaselineUpdate3 ElmEcsXArrayBaseline.World3
+    | ElmEcsXDictBaselineIterate1 ElmEcsXDictBaseline.World3
+    | ElmEcsXDictBaselineIterate2 ElmEcsXDictBaseline.World3
+    | ElmEcsXDictBaselineIterate3 ElmEcsXDictBaseline.World3
+    | ElmEcsXDictBaselineUpdate1 ElmEcsXDictBaseline.World3
+    | ElmEcsXDictBaselineUpdate2 ElmEcsXDictBaseline.World3
+    | ElmEcsXDictBaselineUpdate3 ElmEcsXDictBaseline.World3
     | ExternalModel
 
 
@@ -409,9 +439,18 @@ update msg model =
         BenchmarkInit _ ->
             case benchmark.state of
                 Initializing properties ->
-                    ( { model | benchmark = { benchmark | state = Running properties (initEcs properties) } }
-                    , Cmd.none
-                    )
+                    case initEcs properties of
+                        Just ecsModel ->
+                            ( { model | benchmark = { benchmark | state = Running properties ecsModel } }
+                            , Cmd.none
+                            )
+
+                        Nothing ->
+                            ( { ui = { ui | error = Just (ErrorMessage "Benchmark not available.") }
+                              , benchmark = { benchmark | state = Idle }
+                              }
+                            , Cmd.none
+                            )
 
                 _ ->
                     ( model, Cmd.none )
@@ -556,54 +595,96 @@ subscriptions _ =
         ]
 
 
-initEcs : BenchmarkProperties -> EcsModel
+initEcs : BenchmarkProperties -> Maybe EcsModel
 initEcs properties =
     case properties.framework of
         ElmEcs ->
-            case properties.type_ of
-                Iterate1 ->
-                    ElmEcsIterate1 (ElmEcs.initIterate1 properties)
+            Just <|
+                case properties.type_ of
+                    Iterate1 ->
+                        ElmEcsIterate1 (ElmEcs.initIterate1 properties)
 
-                Iterate2 ->
-                    ElmEcsIterate2 (ElmEcs.initIterate2 properties)
+                    Iterate2 ->
+                        ElmEcsIterate2 (ElmEcs.initIterate2 properties)
 
-                Iterate3 ->
-                    ElmEcsIterate3 (ElmEcs.initIterate3 properties)
+                    Iterate3 ->
+                        ElmEcsIterate3 (ElmEcs.initIterate3 properties)
 
-                Update1 ->
-                    ElmEcsUpdate1 (ElmEcs.initUpdate1 properties)
+                    Update1 ->
+                        ElmEcsUpdate1 (ElmEcs.initUpdate1 properties)
 
-                Update2 ->
-                    ElmEcsUpdate2 (ElmEcs.initUpdate2 properties)
+                    Update2 ->
+                        ElmEcsUpdate2 (ElmEcs.initUpdate2 properties)
 
-                Update3 ->
-                    ElmEcsUpdate3 (ElmEcs.initUpdate3 properties)
+                    Update3 ->
+                        ElmEcsUpdate3 (ElmEcs.initUpdate3 properties)
 
         ElmGameLogic ->
+            Just <|
+                case properties.type_ of
+                    Iterate1 ->
+                        ElmGameLogicIterate1 (ElmGameLogic.initIterate1 properties)
+
+                    Iterate2 ->
+                        ElmGameLogicIterate2 (ElmGameLogic.initIterate2 properties)
+
+                    Iterate3 ->
+                        ElmGameLogicIterate3 (ElmGameLogic.initIterate3 properties)
+
+                    Update1 ->
+                        ElmGameLogicUpdate1 (ElmGameLogic.initUpdate1 properties)
+
+                    Update2 ->
+                        ElmGameLogicUpdate2 (ElmGameLogic.initUpdate2 properties)
+
+                    Update3 ->
+                        ElmGameLogicUpdate3 (ElmGameLogic.initUpdate3 properties)
+
+        ElmEcsXArrayBaseline ->
             case properties.type_ of
                 Iterate1 ->
-                    ElmGameLogicIterate1 (ElmGameLogic.initIterate1 properties)
+                    Just <| ElmEcsXArrayBaselineIterate1 (ElmEcsXArrayBaseline.initIterate1 properties)
 
                 Iterate2 ->
-                    ElmGameLogicIterate2 (ElmGameLogic.initIterate2 properties)
+                    Just <| ElmEcsXArrayBaselineIterate2 (ElmEcsXArrayBaseline.initIterate2 properties)
 
                 Iterate3 ->
-                    ElmGameLogicIterate3 (ElmGameLogic.initIterate3 properties)
+                    Just <| ElmEcsXArrayBaselineIterate3 (ElmEcsXArrayBaseline.initIterate3 properties)
 
                 Update1 ->
-                    ElmGameLogicUpdate1 (ElmGameLogic.initUpdate1 properties)
+                    Just <| ElmEcsXArrayBaselineUpdate1 (ElmEcsXArrayBaseline.initUpdate1 properties)
 
                 Update2 ->
-                    ElmGameLogicUpdate2 (ElmGameLogic.initUpdate2 properties)
+                    Just <| ElmEcsXArrayBaselineUpdate2 (ElmEcsXArrayBaseline.initUpdate2 properties)
 
                 Update3 ->
-                    ElmGameLogicUpdate3 (ElmGameLogic.initUpdate3 properties)
+                    Just <| ElmEcsXArrayBaselineUpdate3 (ElmEcsXArrayBaseline.initUpdate3 properties)
+
+        ElmEcsXDictBaseline ->
+            case properties.type_ of
+                Iterate1 ->
+                    Just <| ElmEcsXDictBaselineIterate1 (ElmEcsXDictBaseline.initIterate1 properties)
+
+                Iterate2 ->
+                    Just <| ElmEcsXDictBaselineIterate2 (ElmEcsXDictBaseline.initIterate2 properties)
+
+                Iterate3 ->
+                    Just <| ElmEcsXDictBaselineIterate3 (ElmEcsXDictBaseline.initIterate3 properties)
+
+                Update1 ->
+                    Just <| ElmEcsXDictBaselineUpdate1 (ElmEcsXDictBaseline.initUpdate1 properties)
+
+                Update2 ->
+                    Just <| ElmEcsXDictBaselineUpdate2 (ElmEcsXDictBaseline.initUpdate2 properties)
+
+                Update3 ->
+                    Just <| ElmEcsXDictBaselineUpdate3 (ElmEcsXDictBaseline.initUpdate3 properties)
 
         JsEcsy ->
-            ExternalModel
+            Just ExternalModel
 
         JsHyperrEcs ->
-            ExternalModel
+            Just ExternalModel
 
 
 updateEcs : BenchmarkProperties -> EcsModel -> EcsModel
@@ -644,6 +725,42 @@ updateEcs _ ecsModel =
 
         ElmGameLogicUpdate3 world ->
             ElmGameLogicUpdate3 (ElmGameLogic.updateUpdate3 world)
+
+        ElmEcsXArrayBaselineIterate1 world ->
+            ElmEcsXArrayBaselineIterate1 (ElmEcsXArrayBaseline.updateIterate1 world)
+
+        ElmEcsXArrayBaselineIterate2 world ->
+            ElmEcsXArrayBaselineIterate2 (ElmEcsXArrayBaseline.updateIterate2 world)
+
+        ElmEcsXArrayBaselineIterate3 world ->
+            ElmEcsXArrayBaselineIterate3 (ElmEcsXArrayBaseline.updateIterate3 world)
+
+        ElmEcsXArrayBaselineUpdate1 world ->
+            ElmEcsXArrayBaselineUpdate1 (ElmEcsXArrayBaseline.updateUpdate1 world)
+
+        ElmEcsXArrayBaselineUpdate2 world ->
+            ElmEcsXArrayBaselineUpdate2 (ElmEcsXArrayBaseline.updateUpdate2 world)
+
+        ElmEcsXArrayBaselineUpdate3 world ->
+            ElmEcsXArrayBaselineUpdate3 (ElmEcsXArrayBaseline.updateUpdate3 world)
+
+        ElmEcsXDictBaselineIterate1 world ->
+            ElmEcsXDictBaselineIterate1 (ElmEcsXDictBaseline.updateIterate1 world)
+
+        ElmEcsXDictBaselineIterate2 world ->
+            ElmEcsXDictBaselineIterate2 (ElmEcsXDictBaseline.updateIterate2 world)
+
+        ElmEcsXDictBaselineIterate3 world ->
+            ElmEcsXDictBaselineIterate3 (ElmEcsXDictBaseline.updateIterate3 world)
+
+        ElmEcsXDictBaselineUpdate1 world ->
+            ElmEcsXDictBaselineUpdate1 (ElmEcsXDictBaseline.updateUpdate1 world)
+
+        ElmEcsXDictBaselineUpdate2 world ->
+            ElmEcsXDictBaselineUpdate2 (ElmEcsXDictBaseline.updateUpdate2 world)
+
+        ElmEcsXDictBaselineUpdate3 world ->
+            ElmEcsXDictBaselineUpdate3 (ElmEcsXDictBaseline.updateUpdate3 world)
 
         ExternalModel ->
             ExternalModel
