@@ -253,16 +253,16 @@ updateCountFromString =
 
 
 type UpdateType
-    = LoopUpdate
-    | TimerUpdate
+    = TimerUpdate
     | AnimationFrameUpdate
+    | LoopUpdate
 
 
 updateTypes : ( UpdateType, List UpdateType )
 updateTypes =
-    ( LoopUpdate
-    , [ TimerUpdate
-      , AnimationFrameUpdate
+    ( TimerUpdate
+    , [ AnimationFrameUpdate
+      , LoopUpdate
       ]
     )
 
@@ -270,14 +270,14 @@ updateTypes =
 updateTypeToString : UpdateType -> String
 updateTypeToString updateType =
     case updateType of
-        LoopUpdate ->
-            "LoopUpdate"
-
         TimerUpdate ->
             "TimerUpdate"
 
         AnimationFrameUpdate ->
             "AnimationFrameUpdate"
+
+        LoopUpdate ->
+            "LoopUpdate"
 
 
 updateTypeFromString : String -> Maybe UpdateType
@@ -288,13 +288,6 @@ updateTypeFromString =
 updateTypeDescription : UpdateType -> Html msg
 updateTypeDescription updateType =
     case updateType of
-        LoopUpdate ->
-            Html.span []
-                [ Html.text "All updates withing one "
-                , Html.i [] [ Html.text "for" ]
-                , Html.text " loop."
-                ]
-
         TimerUpdate ->
             Html.span []
                 [ Html.text "One update per "
@@ -307,6 +300,15 @@ updateTypeDescription updateType =
                 [ Html.text "One update per "
                 , Html.i [] [ Html.text "requestAnimationFrame" ]
                 , Html.text " callback."
+                ]
+
+        LoopUpdate ->
+            Html.span []
+                [ Html.text "All updates withing one "
+                , Html.i [] [ Html.text "for" ]
+                , Html.text " loop."
+                , Html.text " Fast but doesn't give realistc benchmark results compared to a timer update,"
+                , Html.text " because a browser can optimize the loop."
                 ]
 
 
@@ -415,7 +417,7 @@ init _ =
             , selectedFramework = ElmEcsX
             , selectedEntityCount = List.NonEmpty.head entityCounts
             , selectedUpdateCount = List.NonEmpty.head updateCounts
-            , selectedUpdateType = LoopUpdate
+            , selectedUpdateType = TimerUpdate
             , error = Nothing
             , results = []
             , hinted = []
