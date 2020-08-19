@@ -4,6 +4,7 @@ import Browser
 import Color exposing (Color)
 import Ecs
 import ElmEcs as ElmEcs
+import ElmEcsX
 import ElmEcsXArrayBaseline
 import ElmEcsXDictBaseline
 import ElmGameLogic
@@ -124,7 +125,8 @@ benchmarkTypeDescription benchmarkType =
 
 
 type EcsFramework
-    = ElmEcs
+    = ElmEcsX
+    | ElmEcs
     | ElmGameLogic
     | JsEcsy
     | JsHyperrEcs
@@ -134,8 +136,9 @@ type EcsFramework
 
 ecsFrameworks : ( EcsFramework, List EcsFramework )
 ecsFrameworks =
-    ( ElmEcs
-    , [ ElmGameLogic
+    ( ElmEcsX
+    , [ ElmEcs
+      , ElmGameLogic
       , JsEcsy
       , JsHyperrEcs
       , ElmEcsXArrayBaseline
@@ -147,6 +150,9 @@ ecsFrameworks =
 ecsFrameworkToString : EcsFramework -> String
 ecsFrameworkToString ecsFramework =
     case ecsFramework of
+        ElmEcsX ->
+            "ElmEcsX"
+
         ElmEcs ->
             "ElmEcs"
 
@@ -174,6 +180,9 @@ ecsFrameworkFromString =
 ecsFrameworkDescription : EcsFramework -> Html msg
 ecsFrameworkDescription ecsFramework =
     case ecsFramework of
+        ElmEcsX ->
+            Html.text "Experimental elm-ecs, archetype based"
+
         ElmEcs ->
             Html.a
                 [ Html.Attributes.href "https://package.elm-lang.org/packages/harmboschloo/elm-ecs/latest/" ]
@@ -346,7 +355,13 @@ type alias BenchmarkProperties =
 
 
 type EcsModel
-    = ElmEcsIterate1 (Ecs.World Int ElmEcs.Components3 ())
+    = ElmEcsXIterate1 ElmEcsX.World3
+    | ElmEcsXIterate2 ElmEcsX.World3
+    | ElmEcsXIterate3 ElmEcsX.World3
+    | ElmEcsXUpdate1 ElmEcsX.World3
+    | ElmEcsXUpdate2 ElmEcsX.World3
+    | ElmEcsXUpdate3 ElmEcsX.World3
+    | ElmEcsIterate1 (Ecs.World Int ElmEcs.Components3 ())
     | ElmEcsIterate2 (Ecs.World Int ElmEcs.Components3 ())
     | ElmEcsIterate3 (Ecs.World Int ElmEcs.Components3 ())
     | ElmEcsUpdate1 (Ecs.World Int ElmEcs.Components3 ())
@@ -397,7 +412,7 @@ init : () -> ( Model, Cmd msg )
 init _ =
     ( { ui =
             { selectedBenchmark = Iterate1
-            , selectedFramework = ElmEcs
+            , selectedFramework = ElmEcsX
             , selectedEntityCount = List.NonEmpty.head entityCounts
             , selectedUpdateCount = List.NonEmpty.head updateCounts
             , selectedUpdateType = LoopUpdate
@@ -598,6 +613,27 @@ subscriptions _ =
 initEcs : BenchmarkProperties -> Maybe EcsModel
 initEcs properties =
     case properties.framework of
+        ElmEcsX ->
+            Just <|
+                case properties.type_ of
+                    Iterate1 ->
+                        ElmEcsXIterate1 (ElmEcsX.initIterate1 properties)
+
+                    Iterate2 ->
+                        ElmEcsXIterate2 (ElmEcsX.initIterate2 properties)
+
+                    Iterate3 ->
+                        ElmEcsXIterate3 (ElmEcsX.initIterate3 properties)
+
+                    Update1 ->
+                        ElmEcsXUpdate1 (ElmEcsX.initUpdate1 properties)
+
+                    Update2 ->
+                        ElmEcsXUpdate2 (ElmEcsX.initUpdate2 properties)
+
+                    Update3 ->
+                        ElmEcsXUpdate3 (ElmEcsX.initUpdate3 properties)
+
         ElmEcs ->
             Just <|
                 case properties.type_ of
@@ -690,6 +726,24 @@ initEcs properties =
 updateEcs : BenchmarkProperties -> EcsModel -> EcsModel
 updateEcs _ ecsModel =
     case ecsModel of
+        ElmEcsXIterate1 world ->
+            ElmEcsXIterate1 (ElmEcsX.updateIterate1 world)
+
+        ElmEcsXIterate2 world ->
+            ElmEcsXIterate2 (ElmEcsX.updateIterate2 world)
+
+        ElmEcsXIterate3 world ->
+            ElmEcsXIterate3 (ElmEcsX.updateIterate3 world)
+
+        ElmEcsXUpdate1 world ->
+            ElmEcsXUpdate1 (ElmEcsX.updateUpdate1 world)
+
+        ElmEcsXUpdate2 world ->
+            ElmEcsXUpdate2 (ElmEcsX.updateUpdate2 world)
+
+        ElmEcsXUpdate3 world ->
+            ElmEcsXUpdate3 (ElmEcsX.updateUpdate3 world)
+
         ElmEcsIterate1 world ->
             ElmEcsIterate1 (ElmEcs.updateIterate1 world)
 
